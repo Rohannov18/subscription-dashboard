@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subscription Monetization Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=Fira+Mono:wght@400&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root {
+    --bg: #fbfaf8; --bg-warm: #f5f2ee;
+    --surface: #ffffff; --surface-raised: #faf9f7;
+    --border: rgba(0,0,0,0.07); --border-hover: rgba(0,0,0,0.15);
+    --text-primary: #0d0d0d; --text-secondary: #555;
+    --text-tertiary: #999; --text-muted: #bbb;
+    --purple: #a43df5; --teal: #119f97; --orange: #ff5d39;
+    --blue: #2372e9; --pink: #fd2b68;
+    --success: #119f97; --warning: #e08a00; --danger: #d4382c;
+    --radius: 24px; --radius-sm: 12px; --radius-pill: 40px;
+    --shadow: 0 0.6px 1.8px rgba(0,0,0,0.04), 0 2.3px 6.8px rgba(0,0,0,0.06), 0 10px 30px rgba(0,0,0,0.04);
+    --shadow-hover: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.06);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text-primary); min-height: 100vh;
+    -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 1.5;
+}
+
+/* ---- Header ---- */
+.header {
+    padding: 40px 64px 32px; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #fff6ed 0%, #f9f0fa 35%, #f5f7ff 65%, #fff2f2 100%);
+}
+.header .blur-circle {
+    position: absolute; border-radius: 50%; pointer-events: none;
+    filter: blur(80px); opacity: 0.35;
+}
+.header .blur-circle.c1 { width: 320px; height: 320px; background: #e0b0ff; top: -100px; left: -40px; }
+.header .blur-circle.c2 { width: 240px; height: 240px; background: #b0d4ff; top: -60px; right: 80px; }
+.header .blur-circle.c3 { width: 200px; height: 200px; background: #ffb0b0; bottom: -80px; right: -20px; }
+.header-inner { position: relative; z-index: 1; }
+.header h1 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 36px; font-weight: 400; color: var(--text-primary);
+    margin-bottom: 6px; letter-spacing: -1px; line-height: 1.1;
+}
+.header h1 em { font-family: 'IBM Plex Serif', Georgia, serif; font-style: italic; color: var(--purple); }
+.header .subtitle {
+    font-size: 13px; color: var(--text-tertiary); display: flex;
+    align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.header .subtitle .mono {
+    font-family: 'Fira Mono', monospace; font-size: 12px; color: var(--text-secondary);
+    background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 6px;
+}
+
+/* ---- Filter Bar ---- */
+.filter-bar {
+    background: var(--surface); padding: 12px 64px;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(16px); background: rgba(255,255,255,0.9);
+}
+.filter-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.2px; margin-right: 4px;
+}
+.filter-bar input[type="date"] {
+    padding: 6px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'Fira Mono', monospace; font-size: 12px; color: var(--text-primary);
+    background: var(--surface); outline: none; transition: border-color 0.2s;
+}
+.filter-bar input[type="date"]:focus { border-color: var(--purple); }
+.filter-dash { color: var(--text-muted); font-size: 13px; }
+.filter-btn {
+    padding: 6px 16px; border: 1.5px solid var(--border); background: transparent;
+    color: var(--text-tertiary); border-radius: var(--radius-pill); cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+    transition: all 0.2s ease; white-space: nowrap;
+}
+.filter-btn:hover { background: var(--surface-raised); color: var(--text-primary); border-color: var(--border-hover); }
+.filter-btn.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+.filter-btn-apply { background: var(--purple); color: #fff; border-color: var(--purple); font-weight: 600; }
+.filter-btn-apply:hover { background: #9030e0; }
+.filter-info { font-size: 12px; color: var(--text-tertiary); margin-left: auto; font-family: 'Fira Mono', monospace; }
+
+/* ---- Content ---- */
+.content { padding: 28px 64px 72px; max-width: 1440px; margin: 0 auto; }
+@media (max-width: 768px) {
+    .header, .filter-bar, .content { padding-left: 20px; padding-right: 20px; }
+}
+
+/* ---- KPI Cards ---- */
+.kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 28px;
+}
+.kpi-card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 24px 28px;
+    box-shadow: var(--shadow); transition: box-shadow 0.3s;
+}
+.kpi-card:hover { box-shadow: var(--shadow-hover); }
+.kpi-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+.kpi-value {
+    font-family: 'DM Serif Display', serif; font-size: 32px;
+    color: var(--text-primary); line-height: 1.1; margin-bottom: 6px;
+}
+.kpi-delta {
+    font-size: 12px; font-weight: 600; padding: 2px 10px;
+    border-radius: 20px; display: inline-block;
+}
+.kpi-delta.up { color: var(--teal); background: rgba(17,159,151,0.08); }
+.kpi-delta.down { color: var(--danger); background: rgba(212,56,44,0.08); }
+.kpi-delta.neutral { color: var(--text-tertiary); background: rgba(0,0,0,0.04); }
+
+/* ---- Card ---- */
+.card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); margin-bottom: 28px; overflow: hidden;
+    box-shadow: var(--shadow); transition: box-shadow 0.3s;
+}
+.card:hover { box-shadow: var(--shadow-hover); }
+.card-header {
+    padding: 20px 28px; border-bottom: 1px solid var(--border);
+    font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-primary); display: flex;
+    justify-content: space-between; align-items: center; letter-spacing: -0.3px;
+}
+.card-header .viz-desc {
+    font-size: 12px; font-weight: 400; color: var(--text-muted); font-style: italic;
+}
+.card-body { padding: 0; }
+
+/* ---- Revenue Table ---- */
+.rev-table { width: 100%; border-collapse: collapse; }
+.rev-table th {
+    padding: 13px 16px; text-align: right; font-size: 10.5px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px;
+    border-bottom: 1.5px solid rgba(0,0,0,0.1); background: var(--surface-raised);
+    cursor: pointer; user-select: none; transition: color 0.2s;
+}
+.rev-table th:hover { color: var(--text-primary); }
+.rev-table th:first-child { text-align: left; padding-left: 28px; }
+.rev-table th.sorted { color: var(--purple); }
+.rev-table td {
+    padding: 13px 16px; text-align: right; font-size: 13px;
+    font-variant-numeric: tabular-nums; font-family: 'Fira Mono', monospace;
+    border-bottom: 1px solid rgba(0,0,0,0.04); color: var(--text-secondary);
+}
+.rev-table td:first-child {
+    text-align: left; font-weight: 600; color: var(--text-primary);
+    font-family: 'Inter', sans-serif; font-size: 13px; padding-left: 28px;
+}
+.rev-table tbody tr { transition: background 0.15s; cursor: pointer; }
+.rev-table tbody tr:hover { background: #faf8f5; }
+.rev-bar {
+    display: inline-block; height: 6px; border-radius: 3px;
+    background: var(--purple); opacity: 0.3; vertical-align: middle; margin-left: 8px;
+}
+.rate-bad { color: var(--danger) !important; font-weight: 700; background: rgba(212,56,44,0.08); padding: 2px 10px; border-radius: 20px; display: inline-block; }
+.rate-ok { color: var(--warning) !important; font-weight: 700; background: rgba(224,138,0,0.08); padding: 2px 10px; border-radius: 20px; display: inline-block; }
+.rate-good { color: var(--success) !important; font-weight: 700; background: rgba(17,159,151,0.08); padding: 2px 10px; border-radius: 20px; display: inline-block; }
+
+/* ---- Metric Toggle ---- */
+.metric-btn {
+    padding: 5px 14px; border: 1.5px solid var(--border); background: transparent;
+    color: var(--text-tertiary); border-radius: var(--radius-pill); cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 500;
+    transition: all 0.2s ease;
+}
+.metric-btn:hover { background: var(--surface-raised); color: var(--text-primary); }
+.metric-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.trends-controls {
+    display: flex; gap: 8px; padding: 16px 28px; align-items: center;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.ma-toggle {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--text-tertiary);
+}
+.ma-toggle input { accent-color: var(--purple); }
+
+/* ---- Insights ---- */
+.insights-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px; padding: 24px 28px;
+}
+.insight-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 20px 24px;
+    border-left: 4px solid var(--text-muted); transition: box-shadow 0.2s;
+}
+.insight-card:hover { box-shadow: var(--shadow); }
+.insight-card.insight-success { border-left-color: var(--teal); }
+.insight-card.insight-danger { border-left-color: var(--danger); }
+.insight-card.insight-warning { border-left-color: var(--warning); }
+.insight-card.insight-info { border-left-color: var(--blue); }
+.insight-card.insight-purple { border-left-color: var(--purple); }
+.insight-metric { font-family: 'DM Serif Display', serif; font-size: 30px; color: var(--text-primary); margin-bottom: 4px; line-height: 1.1; }
+.insight-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.insight-body { font-size: 12px; color: var(--text-tertiary); line-height: 1.4; }
+
+/* ---- Accordion ---- */
+.accordion-item { border-bottom: 1px solid var(--border); }
+.accordion-header {
+    padding: 16px 28px; cursor: pointer; display: flex;
+    justify-content: space-between; align-items: center;
+    font-weight: 600; font-size: 14px; transition: background 0.2s;
+}
+.accordion-header:hover { background: var(--surface-raised); }
+.accordion-header .arrow { transition: transform 0.3s; font-size: 12px; color: var(--text-muted); }
+.accordion-header.open .arrow { transform: rotate(180deg); }
+.accordion-body { display: none; padding: 0 28px 24px; }
+.accordion-body.open { display: block; }
+
+/* ---- Stage Labels ---- */
+.stage-labels {
+    display: flex; justify-content: space-between;
+    padding: 16px 40px 0 40px; background: var(--surface);
+}
+.stage-label {
+    font-size: 10px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.2px; text-align: center; flex: 1;
+}
+
+/* ---- Footer ---- */
+.footer {
+    padding: 32px 64px; text-align: center; font-size: 12px;
+    color: var(--text-muted); border-top: 1px solid var(--border);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+::selection { background: rgba(164,61,245,0.15); }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="blur-circle c1"></div>
+    <div class="blur-circle c2"></div>
+    <div class="blur-circle c3"></div>
+    <div class="header-inner">
+        <h1>Subscription <em>Monetization</em></h1>
+        <div class="subtitle">
+            <span class="mono">2026-03-14 15:43 UTC</span>
+            <span class="dot" style="color:var(--text-muted)">&middot;</span>
+            <span class="mono">151,800</span> total subscriptions
+            <span class="dot" style="color:var(--text-muted)">&middot;</span>
+            <span id="sub-count-filtered"></span>
+        </div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <span class="filter-label">Date Range</span>
+    <input type="date" id="date-start" value="2025-12-27" min="2025-12-27" max="2026-03-14">
+    <span class="filter-dash">to</span>
+    <input type="date" id="date-end" value="2026-03-14" min="2025-12-27" max="2026-03-14">
+    <button class="filter-btn filter-btn-apply" onclick="applyDateFilter()">Apply</button>
+    <button class="filter-btn" onclick="setPreset(7)">7D</button>
+    <button class="filter-btn" onclick="setPreset(30)">30D</button>
+    <button class="filter-btn" onclick="setPreset(90)">90D</button>
+    <button class="filter-btn" onclick="setPreset(0)">All Time</button>
+    <span class="filter-info" id="filter-info"></span>
+</div>
+
+<div class="content">
+    <!-- Section 1: KPI Cards -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Section 2: Revenue by Experiment -->
+    <div class="card">
+        <div class="card-header">
+            <span>Revenue by Experiment</span>
+            <span class="viz-desc" id="rev-date-range"></span>
+        </div>
+        <div class="card-body">
+            <div id="rev-bar-container" style="width:100%;height:320px;background:var(--surface);"></div>
+        </div>
+        <div class="card-body" id="rev-table-container"></div>
+    </div>
+
+    <!-- Section 3: Revenue Trends -->
+    <div class="card">
+        <div class="card-header">
+            <span>Trends Over Time</span>
+            <span class="viz-desc" id="trends-desc">Daily metrics by experiment</span>
+        </div>
+        <div class="card-body">
+            <div class="trends-controls">
+                <button class="metric-btn active" onclick="setTrendMetric('revenue')" id="mbtn_revenue">Revenue</button>
+                <button class="metric-btn" onclick="setTrendMetric('rev_per_sub')" id="mbtn_rev_per_sub">Rev/Sub</button>
+                <button class="metric-btn" onclick="setTrendMetric('debit_success_rate')" id="mbtn_debit_success_rate">Debit Success %</button>
+                <button class="metric-btn" onclick="setTrendMetric('active_rate')" id="mbtn_active_rate">Retention %</button>
+                <button class="metric-btn" onclick="setTrendMetric('trial_paid_rate')" id="mbtn_trial_paid_rate">Trial Paid %</button>
+                <div class="ma-toggle">
+                    <input type="checkbox" id="ma-toggle" checked onchange="renderTrends()">
+                    <label for="ma-toggle">7-day moving avg</label>
+                </div>
+            </div>
+            <div id="trends-container" style="width:100%;height:500px;background:var(--surface);"></div>
+        </div>
+    </div>
+
+    <!-- Section 4: Revenue Leakage -->
+    <div class="card">
+        <div class="card-header">
+            <span>Revenue Leakage &mdash; Where Money Is Lost</span>
+            <span class="viz-desc">Funnel expressed in revenue, not users</span>
+        </div>
+        <div class="card-body">
+            <div class="insights-grid" id="leakage-insights"></div>
+            <div id="leakage-container" style="width:100%;height:450px;background:var(--surface);"></div>
+        </div>
+    </div>
+
+    <!-- Section 5: Key Insights -->
+    <div class="card">
+        <div class="card-header">
+            <span>Key Insights</span>
+            <span class="viz-desc" id="insights-date-range"></span>
+        </div>
+        <div class="card-body">
+            <div class="insights-grid" id="insights-grid"></div>
+        </div>
+    </div>
+
+    <!-- Section 6: Experiment Deep Dive -->
+    <div class="card">
+        <div class="card-header">
+            <span>Experiment Deep Dive</span>
+            <span class="viz-desc">Click to expand Sankey flow diagram</span>
+        </div>
+        <div class="card-body" id="accordion-container"></div>
+    </div>
+</div>
+
+<div class="footer">
+    Generated 2026-03-14 15:43 UTC &middot; Auto-refreshes daily at midnight UTC
+</div>
+<script>
+// ========== DATA ==========
+const sankeyData = {"_ALL": {"node": {"label": ["Created\n151,800", "Trial Paid\n90,819 (59.8%)", "Did Not Pay Trial\n60,981 (40.2%)", "1st Debit Attempted\n23,535 (25.9%)", "Cancelled Before Debit\n67,270 (74.1%)", "1st Debit Success\n13,878 (59.0%)", "Insufficient Funds\n9,309 (39.6%)", "Other Failure\n327 (1.4%)", "Mandate/Token Issue\n21 (0.1%)", "Still Active\n4,425", "Cancelled After Payment\n8,778", "Completed/Expired\n19", "Cancelled After Failure\n2,759", "Halted\n7,554"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#FAC858", "#91CC75", "#EE6666", "#73C0DE", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.31922628458498026, 0.7892262845849803, 0.16663179340344697, 0.636631793403447, 0.3006118546845124, 0.7343275971956661, 0.9374314850223073, 0.99, 0.12990758444869344, 0.38333014659018483, 0.5768451242829828, 0.661667728914383, 0.8629020607605694], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "UPI autopay mandate was not set up or token was not confirmed for recurring payments", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Subscription completed its billing cycle or expired naturally", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 3, 5, 5, 5, 6, 6, 7, 7, 8, 8], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 13, 12, 13, 12], "value": [90819, 60981, 23535, 67270, 13878, 9309, 327, 21, 4425, 8778, 19, 7282, 2660, 256, 93, 16, 6], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(115, 192, 222, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)"], "label": ["90,819 paid trial (59.8%)", "60,981 did not pay (40.2%)", "23,535 reached debit (25.9%)", "67,270 cancelled before debit (74.1%)", "13,878 success (59.0%)", "9,309 Insufficient Funds (39.6%)", "327 Other Failure (1.4%)", "21 Mandate/Token Issue (0.1%)", "4,425 still active", "8,778 cancelled after successful payment", "19 completed/expired", "7,282 halted from Insufficient Funds", "2,660 cancelled after Insufficient Funds", "256 halted from Other Failure", "93 cancelled after Other Failure", "16 halted from Mandate/Token Issue", "6 cancelled after Mandate/Token Issue"]}}, "exp_1": {"node": {"label": ["Created\n53,133", "Trial Paid\n4,403 (8.3%)", "Did Not Pay Trial\n48,730 (91.7%)", "1st Debit Attempted\n3,191 (72.5%)", "Cancelled Before Debit\n1,212 (27.5%)", "1st Debit Success\n3,174 (99.5%)", "Insufficient Funds\n15 (0.5%)", "Other Failure\n2 (0.1%)", "Still Active\n1,103", "Cancelled After Payment\n2,021", "Cancelled After Failure\n2", "Halted\n65"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#91CC75", "#EE6666", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.08729038450680368, 0.5572903845068037, 0.3761299114240291, 0.8461299114240292, 0.47273581949232213, 0.9304716389846444, 0.9854716389846444, 0.19690535882168597, 0.6279818238796615, 0.932152930115951, 0.9871529301159511], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 5, 5, 6, 6, 7], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 11], "value": [4403, 48730, 3191, 1212, 3174, 15, 2, 1103, 2021, 57, 2, 8], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)"], "label": ["4,403 paid trial (8.3%)", "48,730 did not pay (91.7%)", "3,191 reached debit (72.5%)", "1,212 cancelled before debit (27.5%)", "3,174 success (99.5%)", "15 Insufficient Funds (0.5%)", "2 Other Failure (0.1%)", "1,103 still active", "2,021 cancelled after successful payment", "57 halted from Insufficient Funds", "2 cancelled after Insufficient Funds", "8 halted from Other Failure"]}}, "exp_2": {"node": {"label": ["Created\n50,976", "Trial Paid\n50,716 (99.5%)", "Did Not Pay Trial\n260 (0.5%)", "1st Debit Attempted\n8,906 (17.6%)", "Cancelled Before Debit\n41,808 (82.4%)", "1st Debit Success\n6,549 (73.5%)", "Insufficient Funds\n2,212 (24.8%)", "Other Failure\n131 (1.5%)", "Mandate/Token Issue\n14 (0.2%)", "Still Active\n1,655", "Cancelled After Payment\n4,429", "Completed/Expired\n1", "Cancelled After Failure\n706", "Halted\n2,115"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#FAC858", "#91CC75", "#EE6666", "#73C0DE", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.497704802259887, 0.99, 0.12902551563670783, 0.5990255156367079, 0.3625224567707164, 0.7956029642937347, 0.9361610150460364, 0.99, 0.12897765551313722, 0.4343100157197395, 0.6806647204132046, 0.7493554906804402, 0.8989754098360656], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "UPI autopay mandate was not set up or token was not confirmed for recurring payments", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Subscription completed its billing cycle or expired naturally", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 3, 5, 5, 5, 6, 6, 7, 7, 8, 8], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 13, 12, 13, 12], "value": [50716, 260, 8906, 41808, 6549, 2212, 131, 14, 1655, 4429, 1, 1985, 663, 118, 39, 13, 4], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(115, 192, 222, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)"], "label": ["50,716 paid trial (99.5%)", "260 did not pay (0.5%)", "8,906 reached debit (17.6%)", "41,808 cancelled before debit (82.4%)", "6,549 success (73.5%)", "2,212 Insufficient Funds (24.8%)", "131 Other Failure (1.5%)", "14 Mandate/Token Issue (0.2%)", "1,655 still active", "4,429 cancelled after successful payment", "1 completed/expired", "1,985 halted from Insufficient Funds", "663 cancelled after Insufficient Funds", "118 halted from Other Failure", "39 cancelled after Other Failure", "13 halted from Mandate/Token Issue", "4 cancelled after Mandate/Token Issue"]}}, "exp_3": {"node": {"label": ["Created\n17,583", "Trial Paid\n16,306 (92.7%)", "Did Not Pay Trial\n1,277 (7.3%)", "1st Debit Attempted\n4,266 (26.2%)", "Cancelled Before Debit\n12,032 (73.8%)", "1st Debit Success\n501 (11.7%)", "Insufficient Funds\n3,671 (86.1%)", "Other Failure\n91 (2.1%)", "Mandate/Token Issue\n3 (0.1%)", "Still Active\n263", "Cancelled After Payment\n238", "Cancelled After Failure\n1,103", "Halted\n2,662"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#FAC858", "#91CC75", "#EE6666", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.4673178638457601, 0.9373178638457601, 0.16778745858387534, 0.6377874585838753, 0.09991209563994374, 0.530547351148617, 0.9312705110173465, 0.9862705110173465, 0.07620135958743554, 0.14111345522737928, 0.28971050164088136, 0.6797984060009377], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "UPI autopay mandate was not set up or token was not confirmed for recurring payments", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 3, 5, 5, 6, 6, 7, 7, 8, 8], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 11, 12, 11, 12, 11], "value": [16306, 1277, 4266, 12032, 501, 3671, 91, 3, 263, 238, 2596, 1075, 64, 27, 2, 1], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)"], "label": ["16,306 paid trial (92.7%)", "1,277 did not pay (7.3%)", "4,266 reached debit (26.2%)", "12,032 cancelled before debit (73.8%)", "501 success (11.7%)", "3,671 Insufficient Funds (86.1%)", "91 Other Failure (2.1%)", "3 Mandate/Token Issue (0.1%)", "263 still active", "238 cancelled after successful payment", "2,596 halted from Insufficient Funds", "1,075 cancelled after Insufficient Funds", "64 halted from Other Failure", "27 cancelled after Other Failure", "2 halted from Mandate/Token Issue", "1 cancelled after Mandate/Token Issue"]}}, "exp_4": {"node": {"label": ["Created\n17,312", "Trial Paid\n16,067 (92.8%)", "Did Not Pay Trial\n1,245 (7.2%)", "1st Debit Attempted\n4,214 (26.2%)", "Cancelled Before Debit\n11,849 (73.7%)", "1st Debit Success\n735 (17.4%)", "Insufficient Funds\n3,388 (80.4%)", "Other Failure\n87 (2.1%)", "Mandate/Token Issue\n4 (0.1%)", "Still Active\n448", "Cancelled After Payment\n287", "Cancelled After Failure\n943", "Halted\n2,536"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#FAC858", "#91CC75", "#EE6666", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.46763805452865065, 0.9376380545286507, 0.16805391271867023, 0.6380539127186702, 0.1241279069767442, 0.5549501661129568, 0.9316445182724253, 0.9866445182724254, 0.09518272425249169, 0.1843106312292359, 0.3233614143331751, 0.6892335073564309], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "UPI autopay mandate was not set up or token was not confirmed for recurring payments", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 3, 5, 5, 6, 6, 7, 7, 8, 8], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 11, 12, 11, 12, 11], "value": [16067, 1245, 4214, 11849, 735, 3388, 87, 4, 448, 287, 2470, 918, 63, 24, 3, 1], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)"], "label": ["16,067 paid trial (92.8%)", "1,245 did not pay (7.2%)", "4,214 reached debit (26.2%)", "11,849 cancelled before debit (73.7%)", "735 success (17.4%)", "3,388 Insufficient Funds (80.4%)", "87 Other Failure (2.1%)", "4 Mandate/Token Issue (0.1%)", "448 still active", "287 cancelled after successful payment", "2,470 halted from Insufficient Funds", "918 cancelled after Insufficient Funds", "63 halted from Other Failure", "24 cancelled after Other Failure", "3 halted from Mandate/Token Issue", "1 cancelled after Mandate/Token Issue"]}}, "exp_5": {"node": {"label": ["Created\n9,180", "Trial Paid\n2,797 (30.5%)", "Did Not Pay Trial\n6,383 (69.5%)", "1st Debit Attempted\n2,623 (93.8%)", "Cancelled Before Debit\n174 (6.2%)", "1st Debit Success\n2,598 (99.0%)", "Other Failure\n14 (0.5%)", "Insufficient Funds\n11 (0.4%)", "Still Active\n817", "Cancelled After Payment\n1,622", "Completed/Expired\n18", "Cancelled After Failure\n3", "Halted\n163"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#999999", "#EE6666", "#91CC75", "#EE6666", "#73C0DE", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.18710784313725493, 0.657107843137255, 0.47200572041473005, 0.9420057204147301, 0.47094929470072433, 0.9268985894014488, 0.9818985894014488, 0.18237704918032788, 0.5925638581776591, 0.8903736179946626, 0.9453736179946627, 0.99], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed for other/miscellaneous reasons", "Payment failed because user did not have enough money in their account", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Subscription completed its billing cycle or expired naturally", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 5, 5, 5, 6, 6, 7, 7], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 11, 12, 11], "value": [2797, 6383, 2623, 174, 2598, 14, 11, 817, 1622, 18, 91, 2, 72, 1], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(115, 192, 222, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)"], "label": ["2,797 paid trial (30.5%)", "6,383 did not pay (69.5%)", "2,623 reached debit (93.8%)", "174 cancelled before debit (6.2%)", "2,598 success (99.0%)", "14 Other Failure (0.5%)", "11 Insufficient Funds (0.4%)", "817 still active", "1,622 cancelled after successful payment", "18 completed/expired", "91 halted from Other Failure", "2 cancelled after Other Failure", "72 halted from Insufficient Funds", "1 cancelled after Insufficient Funds"]}}, "exp_6": {"node": {"label": ["Created\n1,505", "Trial Paid\n225 (15.0%)", "Did Not Pay Trial\n1,280 (85.0%)", "1st Debit Attempted\n138 (61.3%)", "Cancelled Before Debit\n87 (38.7%)", "1st Debit Success\n138 (100.0%)", "Still Active\n83", "Cancelled After Payment\n55"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#91CC75", "#EE6666"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.93, 0.93], "y": [0.5, 0.11727574750830566, 0.5872757475083057, 0.32599999999999996, 0.796, 0.475, 0.3056159420289855, 0.7456159420289856], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 5, 5], "target": [1, 2, 3, 4, 5, 6, 7], "value": [225, 1280, 138, 87, 138, 83, 55], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)"], "label": ["225 paid trial (15.0%)", "1,280 did not pay (85.0%)", "138 reached debit (61.3%)", "87 cancelled before debit (38.7%)", "138 success (100.0%)", "83 still active", "55 cancelled after successful payment"]}}, "exp_7": {"node": {"label": ["Created\n1,289", "Trial Paid\n61 (4.7%)", "Did Not Pay Trial\n1,228 (95.3%)", "1st Debit Attempted\n33 (54.1%)", "Cancelled Before Debit\n28 (45.9%)", "1st Debit Success\n28 (84.8%)", "Insufficient Funds\n5 (15.2%)", "Still Active\n5", "Cancelled After Payment\n23", "Halted\n5"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#91CC75", "#EE6666", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.93, 0.93, 0.93], "y": [0.5, 0.07500000000000001, 0.5487044220325834, 0.2934426229508197, 0.7634426229508198, 0.4106060606060606, 0.8506060606060606, 0.1143939393939394, 0.49, 0.8656060606060607], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 5, 5, 6], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9], "value": [61, 1228, 33, 28, 28, 5, 5, 23, 5], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(252, 132, 82, 0.3)"], "label": ["61 paid trial (4.7%)", "1,228 did not pay (95.3%)", "33 reached debit (54.1%)", "28 cancelled before debit (45.9%)", "28 success (84.8%)", "5 Insufficient Funds (15.2%)", "5 still active", "23 cancelled after successful payment", "5 halted from Insufficient Funds"]}}, "exp_8": {"node": {"label": ["Created\n370", "Trial Paid\n86 (23.2%)", "Did Not Pay Trial\n284 (76.8%)", "1st Debit Attempted\n82 (95.3%)", "Cancelled Before Debit\n4 (4.7%)", "1st Debit Success\n75 (91.5%)", "Insufficient Funds\n6 (7.3%)", "Other Failure\n1 (1.2%)", "Still Active\n26", "Cancelled After Payment\n49", "Cancelled After Failure\n1", "Halted\n6"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#91CC75", "#EE6666", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.15459459459459463, 0.6245945945945947, 0.4790697674418605, 0.953139534883721, 0.43871951219512195, 0.8735365853658538, 0.9396341463414635, 0.1847560975609756, 0.5884756097560976, 0.8774390243902439, 0.9435365853658537], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 5, 5, 6, 6, 7], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 11], "value": [86, 284, 82, 4, 75, 6, 1, 26, 49, 5, 1, 1], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)", "rgba(252, 132, 82, 0.3)", "rgba(217, 78, 93, 0.3)", "rgba(252, 132, 82, 0.3)"], "label": ["86 paid trial (23.2%)", "284 did not pay (76.8%)", "82 reached debit (95.3%)", "4 cancelled before debit (4.7%)", "75 success (91.5%)", "6 Insufficient Funds (7.3%)", "1 Other Failure (1.2%)", "26 still active", "49 cancelled after successful payment", "5 halted from Insufficient Funds", "1 cancelled after Insufficient Funds", "1 halted from Other Failure"]}}, "exp_9": {"node": {"label": ["Created\n187", "Trial Paid\n26 (13.9%)", "Did Not Pay Trial\n161 (86.1%)", "1st Debit Attempted\n21 (80.8%)", "Cancelled Before Debit\n5 (19.2%)", "1st Debit Success\n19 (90.5%)", "Insufficient Funds\n1 (4.8%)", "Other Failure\n1 (4.8%)", "Still Active\n3", "Cancelled After Payment\n16", "Cancelled After Failure\n1", "Halted\n1"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#999999", "#91CC75", "#EE6666", "#D94E5D", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.68, 0.68, 0.93, 0.93, 0.93, 0.93], "y": [0.5, 0.11256684491978611, 0.582566844919786, 0.4134615384615385, 0.8834615384615386, 0.4345238095238095, 0.8542857142857143, 0.9097619047619048, 0.11071428571428571, 0.5102380952380952, 0.8692857142857142, 0.9247619047619047], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Payment failed because user did not have enough money in their account", "Payment failed for other/miscellaneous reasons", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription", "Payment failed, then user actively cancelled their subscription (gave up)", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 3, 3, 5, 5], "target": [1, 2, 3, 4, 5, 6, 7, 8, 9], "value": [26, 161, 21, 5, 19, 1, 1, 3, 16], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.25)", "rgba(238, 102, 102, 0.25)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)"], "label": ["26 paid trial (13.9%)", "161 did not pay (86.1%)", "21 reached debit (80.8%)", "5 cancelled before debit (19.2%)", "19 success (90.5%)", "1 Insufficient Funds (4.8%)", "1 Other Failure (4.8%)", "3 still active", "16 cancelled after successful payment"]}}, "exp_10": {"node": {"label": ["Created\n98", "Trial Paid\n69 (70.4%)", "Did Not Pay Trial\n29 (29.6%)", "1st Debit Attempted\n38 (55.1%)", "Cancelled Before Debit\n31 (44.9%)", "1st Debit Success\n38 (100.0%)", "Still Active\n15", "Cancelled After Payment\n23"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#91CC75", "#EE6666"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.93, 0.93], "y": [0.5, 0.36683673469387756, 0.8368367346938776, 0.29782608695652174, 0.7678260869565219, 0.475, 0.21776315789473683, 0.6577631578947368], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 5, 5], "target": [1, 2, 3, 4, 5, 6, 7], "value": [69, 29, 38, 31, 38, 15, 23], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)"], "label": ["69 paid trial (70.4%)", "29 did not pay (29.6%)", "38 reached debit (55.1%)", "31 cancelled before debit (44.9%)", "38 success (100.0%)", "15 still active", "23 cancelled after successful payment"]}}, "exp_11": {"node": {"label": ["Created\n90", "Trial Paid\n47 (52.2%)", "Did Not Pay Trial\n43 (47.8%)", "1st Debit Attempted\n9 (19.1%)", "Cancelled Before Debit\n38 (80.9%)", "1st Debit Success\n9 (100.0%)", "Still Active\n7", "Cancelled After Payment\n2"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#91CC75", "#EE6666"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.93, 0.93], "y": [0.5, 0.28500000000000003, 0.7550000000000001, 0.13617021276595745, 0.6061702127659574, 0.475, 0.38055555555555554, 0.8205555555555556], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "Subscription is currently active and being charged successfully", "User was successfully charged at least once, then cancelled their subscription"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 5, 5], "target": [1, 2, 3, 4, 5, 6, 7], "value": [47, 43, 9, 38, 9, 7, 2], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)"], "label": ["47 paid trial (52.2%)", "43 did not pay (47.8%)", "9 reached debit (19.1%)", "38 cancelled before debit (80.9%)", "9 success (100.0%)", "7 still active", "2 cancelled after successful payment"]}}, "exp_12": {"node": {"label": ["Created\n77", "Trial Paid\n16 (20.8%)", "Did Not Pay Trial\n61 (79.2%)", "1st Debit Attempted\n14 (87.5%)", "Cancelled Before Debit\n2 (12.5%)", "1st Debit Success\n14 (100.0%)", "Cancelled After Payment\n13", "Halted\n1"], "color": ["#5470C6", "#91CC75", "#EE6666", "#FAC858", "#EE6666", "#91CC75", "#EE6666", "#FC8452"], "x": [0.01, 0.22, 0.22, 0.44, 0.44, 0.68, 0.93, 0.93], "y": [0.5, 0.14350649350649353, 0.6135064935064936, 0.44375, 0.9137500000000001, 0.475, 0.4446428571428571, 0.8846428571428572], "customdata": ["Subscription was created on Razorpay (user started checkout)", "User completed the \u20b91 trial payment (or auth charge)", "User started checkout but never completed the trial payment", "Razorpay attempted the first real charge after trial period ended", "User cancelled their subscription before the 1st real charge was attempted", "First real payment was successfully charged to the user", "User was successfully charged at least once, then cancelled their subscription", "Razorpay exhausted all retry attempts (typically 3), subscription auto-stopped"], "pad": 30, "thickness": 28, "line": {"color": "#ccc", "width": 0.5}}, "link": {"source": [0, 0, 1, 1, 3, 5], "target": [1, 2, 3, 4, 5, 6], "value": [16, 61, 14, 2, 14, 13], "color": ["rgba(145, 204, 117, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(250, 200, 88, 0.35)", "rgba(238, 102, 102, 0.3)", "rgba(145, 204, 117, 0.4)", "rgba(238, 102, 102, 0.3)"], "label": ["16 paid trial (20.8%)", "61 did not pay (79.2%)", "14 reached debit (87.5%)", "2 cancelled before debit (12.5%)", "14 success (100.0%)", "13 cancelled after successful payment"]}}};
+let funnelData = {"_ALL": {"price_paise": 0, "created": 151800, "trial_paid": 90819, "activated": 90805, "cancel_before": 67270, "attempted": 23535, "success": 13878, "total_failed": 9657, "insuf_funds": 9309, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 21, "upi_not_init": 0, "tech_error": 0, "other_fail": 327, "still_active": 4425, "cancel_after_success": 8778, "cancel_after_failure": 2759, "halted": 7554, "completed": 19}, "exp_1": {"price_paise": 8900, "created": 53133, "trial_paid": 4403, "activated": 4403, "cancel_before": 1212, "attempted": 3191, "success": 3174, "total_failed": 17, "insuf_funds": 15, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 2, "still_active": 1103, "cancel_after_success": 2021, "cancel_after_failure": 2, "halted": 65, "completed": 0}, "exp_2": {"price_paise": 8900, "created": 50976, "trial_paid": 50716, "activated": 50714, "cancel_before": 41808, "attempted": 8906, "success": 6549, "total_failed": 2357, "insuf_funds": 2212, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 14, "upi_not_init": 0, "tech_error": 0, "other_fail": 131, "still_active": 1655, "cancel_after_success": 4429, "cancel_after_failure": 706, "halted": 2115, "completed": 1}, "exp_3": {"price_paise": 99900, "created": 17583, "trial_paid": 16306, "activated": 16298, "cancel_before": 12032, "attempted": 4266, "success": 501, "total_failed": 3765, "insuf_funds": 3671, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 3, "upi_not_init": 0, "tech_error": 0, "other_fail": 91, "still_active": 263, "cancel_after_success": 238, "cancel_after_failure": 1103, "halted": 2662, "completed": 0}, "exp_4": {"price_paise": 49900, "created": 17312, "trial_paid": 16067, "activated": 16063, "cancel_before": 11849, "attempted": 4214, "success": 735, "total_failed": 3479, "insuf_funds": 3388, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 4, "upi_not_init": 0, "tech_error": 0, "other_fail": 87, "still_active": 448, "cancel_after_success": 287, "cancel_after_failure": 943, "halted": 2536, "completed": 0}, "exp_5": {"price_paise": 0, "created": 9180, "trial_paid": 2797, "activated": 2797, "cancel_before": 174, "attempted": 2623, "success": 2598, "total_failed": 25, "insuf_funds": 11, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 14, "still_active": 817, "cancel_after_success": 1622, "cancel_after_failure": 3, "halted": 163, "completed": 18}, "exp_6": {"price_paise": 8900, "created": 1505, "trial_paid": 225, "activated": 225, "cancel_before": 87, "attempted": 138, "success": 138, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 83, "cancel_after_success": 55, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "exp_7": {"price_paise": 22900, "created": 1289, "trial_paid": 61, "activated": 61, "cancel_before": 28, "attempted": 33, "success": 28, "total_failed": 5, "insuf_funds": 5, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 23, "cancel_after_failure": 0, "halted": 5, "completed": 0}, "exp_8": {"price_paise": 3000, "created": 370, "trial_paid": 86, "activated": 86, "cancel_before": 4, "attempted": 82, "success": 75, "total_failed": 7, "insuf_funds": 6, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 26, "cancel_after_success": 49, "cancel_after_failure": 1, "halted": 6, "completed": 0}, "exp_9": {"price_paise": 2900, "created": 187, "trial_paid": 26, "activated": 26, "cancel_before": 5, "attempted": 21, "success": 19, "total_failed": 2, "insuf_funds": 1, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 3, "cancel_after_success": 16, "cancel_after_failure": 1, "halted": 1, "completed": 0}, "exp_10": {"price_paise": 49900, "created": 98, "trial_paid": 69, "activated": 69, "cancel_before": 31, "attempted": 38, "success": 38, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 15, "cancel_after_success": 23, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "exp_11": {"price_paise": 99900, "created": 90, "trial_paid": 47, "activated": 47, "cancel_before": 38, "attempted": 9, "success": 9, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 7, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "exp_12": {"price_paise": 0, "created": 77, "trial_paid": 16, "activated": 16, "cancel_before": 2, "attempted": 14, "success": 14, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 13, "cancel_after_failure": 0, "halted": 1, "completed": 0}};
+const titleMap = {"_ALL": "All Experiments", "exp_1": "\u20b989 flat", "exp_2": "\u20b91\u2192\u20b989 [trial]", "exp_3": "\u20b91\u2192\u20b9999 [trial]", "exp_4": "\u20b91\u2192\u20b9499 [trial]", "exp_5": "Legacy intro", "exp_6": "\u20b989 [exp]", "exp_7": "\u20b9229 [exp]", "exp_8": "\u20b930 [flat]", "exp_9": "\u20b929 [exp]", "exp_10": "\u20b9499 flat", "exp_11": "\u20b9999 flat", "exp_12": "Other"};
+const timeSeriesData = {"exp_2": {"2026-02-12": {"price_paise": 8900, "created": 3745, "trial_paid": 3745, "activated": 3745, "cancel_before": 2782, "attempted": 963, "success": 963, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 142, "cancel_after_success": 703, "cancel_after_failure": 0, "halted": 118, "completed": 0}, "2026-02-13": {"price_paise": 8900, "created": 3155, "trial_paid": 3155, "activated": 3155, "cancel_before": 2296, "attempted": 859, "success": 859, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 132, "cancel_after_success": 615, "cancel_after_failure": 0, "halted": 112, "completed": 0}, "2026-02-14": {"price_paise": 8900, "created": 209, "trial_paid": 209, "activated": 209, "cancel_before": 169, "attempted": 40, "success": 40, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 7, "cancel_after_success": 22, "cancel_after_failure": 0, "halted": 11, "completed": 0}, "2026-02-15": {"price_paise": 8900, "created": 154, "trial_paid": 154, "activated": 154, "cancel_before": 121, "attempted": 33, "success": 33, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 7, "cancel_after_success": 20, "cancel_after_failure": 0, "halted": 6, "completed": 0}, "2026-02-16": {"price_paise": 8900, "created": 73, "trial_paid": 73, "activated": 73, "cancel_before": 64, "attempted": 9, "success": 9, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 6, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-17": {"price_paise": 8900, "created": 1430, "trial_paid": 1430, "activated": 1430, "cancel_before": 990, "attempted": 440, "success": 440, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 41, "cancel_after_success": 352, "cancel_after_failure": 0, "halted": 47, "completed": 0}, "2026-02-18": {"price_paise": 8900, "created": 3970, "trial_paid": 3970, "activated": 3970, "cancel_before": 2801, "attempted": 1169, "success": 1169, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 140, "cancel_after_success": 921, "cancel_after_failure": 0, "halted": 108, "completed": 0}, "2026-02-19": {"price_paise": 8900, "created": 659, "trial_paid": 659, "activated": 657, "cancel_before": 468, "attempted": 189, "success": 189, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 33, "cancel_after_success": 130, "cancel_after_failure": 0, "halted": 26, "completed": 0}, "2026-02-20": {"price_paise": 8900, "created": 1419, "trial_paid": 1419, "activated": 1419, "cancel_before": 1027, "attempted": 392, "success": 330, "total_failed": 62, "insuf_funds": 59, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 3, "still_active": 61, "cancel_after_success": 241, "cancel_after_failure": 13, "halted": 77, "completed": 0}, "2026-02-21": {"price_paise": 8900, "created": 5059, "trial_paid": 5059, "activated": 5059, "cancel_before": 3835, "attempted": 1224, "success": 926, "total_failed": 298, "insuf_funds": 257, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 2, "upi_not_init": 0, "tech_error": 0, "other_fail": 39, "still_active": 199, "cancel_after_success": 719, "cancel_after_failure": 66, "halted": 240, "completed": 0}, "2026-02-22": {"price_paise": 8900, "created": 6926, "trial_paid": 6926, "activated": 6926, "cancel_before": 5885, "attempted": 1041, "success": 624, "total_failed": 417, "insuf_funds": 379, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 6, "upi_not_init": 0, "tech_error": 0, "other_fail": 32, "still_active": 248, "cancel_after_success": 375, "cancel_after_failure": 103, "halted": 314, "completed": 1}, "2026-02-23": {"price_paise": 8900, "created": 5811, "trial_paid": 5811, "activated": 5811, "cancel_before": 5097, "attempted": 714, "success": 277, "total_failed": 437, "insuf_funds": 397, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 5, "upi_not_init": 0, "tech_error": 0, "other_fail": 35, "still_active": 183, "cancel_after_success": 94, "cancel_after_failure": 132, "halted": 305, "completed": 0}, "2026-02-24": {"price_paise": 8900, "created": 11634, "trial_paid": 11634, "activated": 11634, "cancel_before": 10622, "attempted": 1012, "success": 368, "total_failed": 644, "insuf_funds": 629, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 14, "still_active": 248, "cancel_after_success": 120, "cancel_after_failure": 223, "halted": 421, "completed": 0}, "2026-02-25": {"price_paise": 8900, "created": 5279, "trial_paid": 5279, "activated": 5279, "cancel_before": 4719, "attempted": 560, "success": 213, "total_failed": 347, "insuf_funds": 343, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 133, "cancel_after_success": 80, "cancel_after_failure": 133, "halted": 214, "completed": 0}, "2026-02-26": {"price_paise": 8900, "created": 598, "trial_paid": 598, "activated": 598, "cancel_before": 552, "attempted": 46, "success": 15, "total_failed": 31, "insuf_funds": 31, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 6, "cancel_after_failure": 10, "halted": 21, "completed": 0}, "2026-02-27": {"price_paise": 8900, "created": 350, "trial_paid": 176, "activated": 176, "cancel_before": 153, "attempted": 23, "success": 11, "total_failed": 12, "insuf_funds": 11, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 8, "cancel_after_success": 3, "cancel_after_failure": 3, "halted": 9, "completed": 0}, "2026-02-28": {"price_paise": 8900, "created": 138, "trial_paid": 52, "activated": 52, "cancel_before": 31, "attempted": 21, "success": 8, "total_failed": 13, "insuf_funds": 13, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 5, "cancel_after_failure": 5, "halted": 8, "completed": 0}, "2026-03-01": {"price_paise": 8900, "created": 32, "trial_paid": 32, "activated": 32, "cancel_before": 14, "attempted": 18, "success": 8, "total_failed": 10, "insuf_funds": 10, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 4, "cancel_after_failure": 2, "halted": 8, "completed": 0}, "2026-03-02": {"price_paise": 8900, "created": 28, "trial_paid": 28, "activated": 28, "cancel_before": 15, "attempted": 13, "success": 6, "total_failed": 7, "insuf_funds": 7, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 0, "cancel_after_failure": 2, "halted": 5, "completed": 0}, "2026-03-03": {"price_paise": 8900, "created": 41, "trial_paid": 41, "activated": 41, "cancel_before": 15, "attempted": 26, "success": 14, "total_failed": 12, "insuf_funds": 12, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 11, "cancel_after_success": 3, "cancel_after_failure": 3, "halted": 9, "completed": 0}, "2026-03-04": {"price_paise": 8900, "created": 40, "trial_paid": 40, "activated": 40, "cancel_before": 25, "attempted": 15, "success": 7, "total_failed": 8, "insuf_funds": 8, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 8, "completed": 0}, "2026-03-05": {"price_paise": 8900, "created": 47, "trial_paid": 47, "activated": 47, "cancel_before": 27, "attempted": 20, "success": 10, "total_failed": 10, "insuf_funds": 10, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 8, "cancel_after_success": 2, "cancel_after_failure": 4, "halted": 6, "completed": 0}, "2026-03-06": {"price_paise": 8900, "created": 30, "trial_paid": 30, "activated": 30, "cancel_before": 12, "attempted": 18, "success": 8, "total_failed": 10, "insuf_funds": 10, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 10, "completed": 0}, "2026-03-07": {"price_paise": 8900, "created": 34, "trial_paid": 34, "activated": 34, "cancel_before": 14, "attempted": 20, "success": 7, "total_failed": 13, "insuf_funds": 12, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 5, "cancel_after_success": 2, "cancel_after_failure": 3, "halted": 10, "completed": 0}, "2026-03-08": {"price_paise": 8900, "created": 31, "trial_paid": 31, "activated": 31, "cancel_before": 18, "attempted": 13, "success": 6, "total_failed": 7, "insuf_funds": 7, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 1, "cancel_after_failure": 1, "halted": 6, "completed": 0}, "2026-03-09": {"price_paise": 8900, "created": 15, "trial_paid": 15, "activated": 15, "cancel_before": 8, "attempted": 7, "success": 2, "total_failed": 5, "insuf_funds": 4, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 2, "cancel_after_success": 0, "cancel_after_failure": 1, "halted": 4, "completed": 0}, "2026-03-10": {"price_paise": 8900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 4, "attempted": 2, "success": 0, "total_failed": 2, "insuf_funds": 2, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 2, "completed": 0}, "2026-03-11": {"price_paise": 8900, "created": 28, "trial_paid": 28, "activated": 28, "cancel_before": 16, "attempted": 12, "success": 4, "total_failed": 8, "insuf_funds": 7, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 4, "cancel_after_success": 0, "cancel_after_failure": 2, "halted": 6, "completed": 0}, "2026-03-12": {"price_paise": 8900, "created": 15, "trial_paid": 15, "activated": 15, "cancel_before": 9, "attempted": 6, "success": 2, "total_failed": 4, "insuf_funds": 4, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 4, "completed": 0}, "2026-03-13": {"price_paise": 8900, "created": 10, "trial_paid": 10, "activated": 10, "cancel_before": 9, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-14": {"price_paise": 8900, "created": 10, "trial_paid": 10, "activated": 10, "cancel_before": 10, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_1": {"2026-01-26": {"price_paise": 8900, "created": 329, "trial_paid": 35, "activated": 35, "cancel_before": 11, "attempted": 24, "success": 24, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 8, "cancel_after_success": 16, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-27": {"price_paise": 8900, "created": 844, "trial_paid": 74, "activated": 74, "cancel_before": 32, "attempted": 42, "success": 39, "total_failed": 3, "insuf_funds": 2, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 7, "cancel_after_success": 32, "cancel_after_failure": 0, "halted": 3, "completed": 0}, "2026-01-28": {"price_paise": 8900, "created": 477, "trial_paid": 29, "activated": 29, "cancel_before": 7, "attempted": 22, "success": 21, "total_failed": 1, "insuf_funds": 1, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 12, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-01-29": {"price_paise": 8900, "created": 1290, "trial_paid": 75, "activated": 75, "cancel_before": 23, "attempted": 52, "success": 49, "total_failed": 3, "insuf_funds": 3, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 13, "cancel_after_success": 36, "cancel_after_failure": 0, "halted": 3, "completed": 0}, "2026-01-30": {"price_paise": 8900, "created": 1373, "trial_paid": 91, "activated": 91, "cancel_before": 25, "attempted": 66, "success": 57, "total_failed": 9, "insuf_funds": 9, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 20, "cancel_after_success": 37, "cancel_after_failure": 2, "halted": 7, "completed": 0}, "2026-01-31": {"price_paise": 8900, "created": 1069, "trial_paid": 45, "activated": 45, "cancel_before": 12, "attempted": 33, "success": 32, "total_failed": 1, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 9, "cancel_after_success": 23, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-02-01": {"price_paise": 8900, "created": 1028, "trial_paid": 74, "activated": 74, "cancel_before": 24, "attempted": 50, "success": 50, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 10, "cancel_after_success": 39, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-02-02": {"price_paise": 8900, "created": 1013, "trial_paid": 55, "activated": 55, "cancel_before": 16, "attempted": 39, "success": 39, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 29, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-02-03": {"price_paise": 8900, "created": 785, "trial_paid": 78, "activated": 78, "cancel_before": 18, "attempted": 60, "success": 60, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 12, "cancel_after_success": 43, "cancel_after_failure": 0, "halted": 5, "completed": 0}, "2026-02-04": {"price_paise": 8900, "created": 649, "trial_paid": 39, "activated": 39, "cancel_before": 9, "attempted": 30, "success": 30, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 23, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-02-05": {"price_paise": 8900, "created": 603, "trial_paid": 26, "activated": 26, "cancel_before": 5, "attempted": 21, "success": 21, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 16, "cancel_after_failure": 0, "halted": 2, "completed": 0}, "2026-02-06": {"price_paise": 8900, "created": 1082, "trial_paid": 54, "activated": 54, "cancel_before": 10, "attempted": 44, "success": 44, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 11, "cancel_after_success": 28, "cancel_after_failure": 0, "halted": 5, "completed": 0}, "2026-02-07": {"price_paise": 8900, "created": 1092, "trial_paid": 69, "activated": 69, "cancel_before": 11, "attempted": 58, "success": 58, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 17, "cancel_after_success": 36, "cancel_after_failure": 0, "halted": 5, "completed": 0}, "2026-02-08": {"price_paise": 8900, "created": 1052, "trial_paid": 61, "activated": 61, "cancel_before": 11, "attempted": 50, "success": 50, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 40, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-02-09": {"price_paise": 8900, "created": 873, "trial_paid": 79, "activated": 79, "cancel_before": 14, "attempted": 65, "success": 65, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 11, "cancel_after_success": 47, "cancel_after_failure": 0, "halted": 7, "completed": 0}, "2026-02-10": {"price_paise": 8900, "created": 2134, "trial_paid": 168, "activated": 168, "cancel_before": 40, "attempted": 128, "success": 128, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 26, "cancel_after_success": 96, "cancel_after_failure": 0, "halted": 6, "completed": 0}, "2026-02-11": {"price_paise": 8900, "created": 4924, "trial_paid": 389, "activated": 389, "cancel_before": 95, "attempted": 294, "success": 294, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 76, "cancel_after_success": 202, "cancel_after_failure": 0, "halted": 16, "completed": 0}, "2026-02-12": {"price_paise": 8900, "created": 3045, "trial_paid": 239, "activated": 239, "cancel_before": 56, "attempted": 183, "success": 183, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 62, "cancel_after_success": 121, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-13": {"price_paise": 8900, "created": 4029, "trial_paid": 300, "activated": 300, "cancel_before": 94, "attempted": 206, "success": 206, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 80, "cancel_after_success": 126, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-14": {"price_paise": 8900, "created": 6567, "trial_paid": 544, "activated": 544, "cancel_before": 146, "attempted": 398, "success": 398, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 129, "cancel_after_success": 269, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-15": {"price_paise": 8900, "created": 4254, "trial_paid": 395, "activated": 395, "cancel_before": 133, "attempted": 262, "success": 262, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 97, "cancel_after_success": 165, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-16": {"price_paise": 8900, "created": 4461, "trial_paid": 389, "activated": 389, "cancel_before": 121, "attempted": 268, "success": 268, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 98, "cancel_after_success": 170, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-17": {"price_paise": 8900, "created": 2093, "trial_paid": 193, "activated": 193, "cancel_before": 41, "attempted": 152, "success": 152, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 51, "cancel_after_success": 101, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-18": {"price_paise": 8900, "created": 656, "trial_paid": 58, "activated": 58, "cancel_before": 12, "attempted": 46, "success": 46, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 25, "cancel_after_success": 21, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-19": {"price_paise": 8900, "created": 2545, "trial_paid": 220, "activated": 220, "cancel_before": 90, "attempted": 130, "success": 130, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 61, "cancel_after_success": 69, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-20": {"price_paise": 8900, "created": 801, "trial_paid": 65, "activated": 65, "cancel_before": 19, "attempted": 46, "success": 46, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 30, "cancel_after_success": 16, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-21": {"price_paise": 8900, "created": 463, "trial_paid": 36, "activated": 36, "cancel_before": 4, "attempted": 32, "success": 32, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 16, "cancel_after_success": 16, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-22": {"price_paise": 8900, "created": 429, "trial_paid": 30, "activated": 30, "cancel_before": 13, "attempted": 17, "success": 17, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 10, "cancel_after_success": 7, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-23": {"price_paise": 8900, "created": 1131, "trial_paid": 66, "activated": 66, "cancel_before": 21, "attempted": 45, "success": 45, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 21, "cancel_after_success": 24, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-24": {"price_paise": 8900, "created": 407, "trial_paid": 41, "activated": 41, "cancel_before": 18, "attempted": 23, "success": 23, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 17, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-25": {"price_paise": 8900, "created": 507, "trial_paid": 37, "activated": 37, "cancel_before": 6, "attempted": 31, "success": 31, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 18, "cancel_after_success": 13, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-26": {"price_paise": 8900, "created": 432, "trial_paid": 34, "activated": 34, "cancel_before": 7, "attempted": 27, "success": 27, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 14, "cancel_after_success": 13, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-27": {"price_paise": 8900, "created": 289, "trial_paid": 25, "activated": 25, "cancel_before": 4, "attempted": 21, "success": 21, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 12, "cancel_after_success": 9, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-28": {"price_paise": 8900, "created": 144, "trial_paid": 27, "activated": 27, "cancel_before": 9, "attempted": 18, "success": 18, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 9, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-01": {"price_paise": 8900, "created": 18, "trial_paid": 18, "activated": 18, "cancel_before": 2, "attempted": 16, "success": 16, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 7, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-02": {"price_paise": 8900, "created": 17, "trial_paid": 17, "activated": 17, "cancel_before": 1, "attempted": 16, "success": 16, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 7, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-03": {"price_paise": 8900, "created": 27, "trial_paid": 27, "activated": 27, "cancel_before": 4, "attempted": 23, "success": 23, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 14, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-04": {"price_paise": 8900, "created": 17, "trial_paid": 17, "activated": 17, "cancel_before": 3, "attempted": 14, "success": 14, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 10, "cancel_after_success": 4, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-05": {"price_paise": 8900, "created": 16, "trial_paid": 16, "activated": 16, "cancel_before": 4, "attempted": 12, "success": 12, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 6, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-06": {"price_paise": 8900, "created": 22, "trial_paid": 22, "activated": 22, "cancel_before": 5, "attempted": 17, "success": 17, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 8, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-07": {"price_paise": 8900, "created": 32, "trial_paid": 32, "activated": 32, "cancel_before": 2, "attempted": 30, "success": 30, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 8, "cancel_after_success": 22, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-08": {"price_paise": 8900, "created": 36, "trial_paid": 36, "activated": 36, "cancel_before": 19, "attempted": 17, "success": 17, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 8, "cancel_after_success": 9, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-09": {"price_paise": 8900, "created": 22, "trial_paid": 22, "activated": 22, "cancel_before": 3, "attempted": 19, "success": 19, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 12, "cancel_after_success": 7, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-10": {"price_paise": 8900, "created": 18, "trial_paid": 18, "activated": 18, "cancel_before": 5, "attempted": 13, "success": 13, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 8, "cancel_after_success": 5, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-11": {"price_paise": 8900, "created": 13, "trial_paid": 13, "activated": 13, "cancel_before": 4, "attempted": 9, "success": 9, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 5, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-12": {"price_paise": 8900, "created": 12, "trial_paid": 12, "activated": 12, "cancel_before": 1, "attempted": 11, "success": 11, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-13": {"price_paise": 8900, "created": 8, "trial_paid": 8, "activated": 8, "cancel_before": 2, "attempted": 6, "success": 6, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-14": {"price_paise": 8900, "created": 5, "trial_paid": 5, "activated": 5, "cancel_before": 0, "attempted": 5, "success": 5, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_5": {"2026-01-12": {"price_paise": 0, "created": 11, "trial_paid": 2, "activated": 2, "cancel_before": 0, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-13": {"price_paise": 0, "created": 201, "trial_paid": 44, "activated": 44, "cancel_before": 2, "attempted": 42, "success": 42, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 11, "cancel_after_success": 27, "cancel_after_failure": 0, "halted": 0, "completed": 4}, "2026-01-14": {"price_paise": 0, "created": 520, "trial_paid": 100, "activated": 100, "cancel_before": 7, "attempted": 93, "success": 93, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 33, "cancel_after_success": 51, "cancel_after_failure": 0, "halted": 0, "completed": 9}, "2026-01-15": {"price_paise": 0, "created": 676, "trial_paid": 158, "activated": 158, "cancel_before": 10, "attempted": 148, "success": 148, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 47, "cancel_after_success": 95, "cancel_after_failure": 0, "halted": 1, "completed": 5}, "2026-01-16": {"price_paise": 0, "created": 1006, "trial_paid": 252, "activated": 252, "cancel_before": 7, "attempted": 245, "success": 245, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 97, "cancel_after_success": 141, "cancel_after_failure": 0, "halted": 7, "completed": 0}, "2026-01-17": {"price_paise": 0, "created": 1054, "trial_paid": 306, "activated": 306, "cancel_before": 12, "attempted": 294, "success": 294, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 118, "cancel_after_success": 169, "cancel_after_failure": 0, "halted": 7, "completed": 0}, "2026-01-18": {"price_paise": 0, "created": 821, "trial_paid": 232, "activated": 232, "cancel_before": 14, "attempted": 218, "success": 218, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 73, "cancel_after_success": 127, "cancel_after_failure": 0, "halted": 18, "completed": 0}, "2026-01-19": {"price_paise": 0, "created": 1031, "trial_paid": 339, "activated": 339, "cancel_before": 34, "attempted": 305, "success": 305, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 78, "cancel_after_success": 202, "cancel_after_failure": 0, "halted": 25, "completed": 0}, "2026-01-20": {"price_paise": 0, "created": 1086, "trial_paid": 375, "activated": 375, "cancel_before": 25, "attempted": 350, "success": 350, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 96, "cancel_after_success": 217, "cancel_after_failure": 0, "halted": 37, "completed": 0}, "2026-01-21": {"price_paise": 0, "created": 969, "trial_paid": 346, "activated": 346, "cancel_before": 15, "attempted": 331, "success": 331, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 91, "cancel_after_success": 213, "cancel_after_failure": 0, "halted": 27, "completed": 0}, "2026-01-22": {"price_paise": 0, "created": 762, "trial_paid": 255, "activated": 255, "cancel_before": 21, "attempted": 234, "success": 231, "total_failed": 3, "insuf_funds": 3, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 65, "cancel_after_success": 147, "cancel_after_failure": 1, "halted": 21, "completed": 0}, "2026-01-23": {"price_paise": 0, "created": 1016, "trial_paid": 378, "activated": 378, "cancel_before": 25, "attempted": 353, "success": 331, "total_failed": 22, "insuf_funds": 8, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 14, "still_active": 103, "cancel_after_success": 228, "cancel_after_failure": 2, "halted": 20, "completed": 0}, "2026-01-24": {"price_paise": 0, "created": 27, "trial_paid": 10, "activated": 10, "cancel_before": 2, "attempted": 8, "success": 8, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 4, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_6": {"2026-02-12": {"price_paise": 8900, "created": 10, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-13": {"price_paise": 8900, "created": 6, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-15": {"price_paise": 8900, "created": 2, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-18": {"price_paise": 8900, "created": 16, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-19": {"price_paise": 8900, "created": 2, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-21": {"price_paise": 8900, "created": 12, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-22": {"price_paise": 8900, "created": 19, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-23": {"price_paise": 8900, "created": 11, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-24": {"price_paise": 8900, "created": 482, "trial_paid": 44, "activated": 44, "cancel_before": 26, "attempted": 18, "success": 18, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 12, "cancel_after_success": 6, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-25": {"price_paise": 8900, "created": 417, "trial_paid": 45, "activated": 45, "cancel_before": 24, "attempted": 21, "success": 21, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 7, "cancel_after_success": 14, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-26": {"price_paise": 8900, "created": 205, "trial_paid": 28, "activated": 28, "cancel_before": 9, "attempted": 19, "success": 19, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 9, "cancel_after_success": 10, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-27": {"price_paise": 8900, "created": 164, "trial_paid": 19, "activated": 19, "cancel_before": 7, "attempted": 12, "success": 12, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 7, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-28": {"price_paise": 8900, "created": 87, "trial_paid": 15, "activated": 15, "cancel_before": 5, "attempted": 10, "success": 10, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 7, "cancel_after_success": 3, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-01": {"price_paise": 8900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 1, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-02": {"price_paise": 8900, "created": 11, "trial_paid": 11, "activated": 11, "cancel_before": 2, "attempted": 9, "success": 9, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 3, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-03": {"price_paise": 8900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 2, "attempted": 4, "success": 4, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-04": {"price_paise": 8900, "created": 4, "trial_paid": 4, "activated": 4, "cancel_before": 0, "attempted": 4, "success": 4, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-05": {"price_paise": 8900, "created": 9, "trial_paid": 9, "activated": 9, "cancel_before": 3, "attempted": 6, "success": 6, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-06": {"price_paise": 8900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 0, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-07": {"price_paise": 8900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 1, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 2, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-08": {"price_paise": 8900, "created": 5, "trial_paid": 5, "activated": 5, "cancel_before": 0, "attempted": 5, "success": 5, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-09": {"price_paise": 8900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 1, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-10": {"price_paise": 8900, "created": 4, "trial_paid": 4, "activated": 4, "cancel_before": 0, "attempted": 4, "success": 4, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-11": {"price_paise": 8900, "created": 1, "trial_paid": 1, "activated": 1, "cancel_before": 1, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-12": {"price_paise": 8900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 0, "attempted": 6, "success": 6, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-13": {"price_paise": 8900, "created": 11, "trial_paid": 11, "activated": 11, "cancel_before": 4, "attempted": 7, "success": 7, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 6, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-14": {"price_paise": 8900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 0, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 2, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_8": {"2026-01-24": {"price_paise": 3000, "created": 175, "trial_paid": 51, "activated": 51, "cancel_before": 3, "attempted": 48, "success": 44, "total_failed": 4, "insuf_funds": 3, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 17, "cancel_after_success": 27, "cancel_after_failure": 0, "halted": 4, "completed": 0}, "2026-01-25": {"price_paise": 3000, "created": 103, "trial_paid": 15, "activated": 15, "cancel_before": 1, "attempted": 14, "success": 11, "total_failed": 3, "insuf_funds": 3, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 4, "cancel_after_success": 7, "cancel_after_failure": 1, "halted": 2, "completed": 0}, "2026-01-26": {"price_paise": 3000, "created": 92, "trial_paid": 20, "activated": 20, "cancel_before": 0, "attempted": 20, "success": 20, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 15, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_12": {"2025-12-27": {"price_paise": 0, "created": 1, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-06": {"price_paise": 0, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 0, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 3, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-07": {"price_paise": 0, "created": 4, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-08": {"price_paise": 0, "created": 21, "trial_paid": 1, "activated": 1, "cancel_before": 0, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-09": {"price_paise": 0, "created": 10, "trial_paid": 3, "activated": 3, "cancel_before": 0, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 1, "completed": 0}, "2026-01-10": {"price_paise": 0, "created": 12, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-11": {"price_paise": 0, "created": 3, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-12": {"price_paise": 0, "created": 11, "trial_paid": 3, "activated": 3, "cancel_before": 1, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-13": {"price_paise": 0, "created": 3, "trial_paid": 1, "activated": 1, "cancel_before": 0, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-16": {"price_paise": 0, "created": 1, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-19": {"price_paise": 0, "created": 2, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-01-23": {"price_paise": 0, "created": 6, "trial_paid": 3, "activated": 3, "cancel_before": 0, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 3, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_7": {"2026-01-24": {"price_paise": 22900, "created": 637, "trial_paid": 31, "activated": 31, "cancel_before": 12, "attempted": 19, "success": 16, "total_failed": 3, "insuf_funds": 3, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 2, "cancel_after_success": 14, "cancel_after_failure": 0, "halted": 3, "completed": 0}, "2026-01-25": {"price_paise": 22900, "created": 561, "trial_paid": 26, "activated": 26, "cancel_before": 13, "attempted": 13, "success": 11, "total_failed": 2, "insuf_funds": 2, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 2, "cancel_after_success": 9, "cancel_after_failure": 0, "halted": 2, "completed": 0}, "2026-01-26": {"price_paise": 22900, "created": 91, "trial_paid": 4, "activated": 4, "cancel_before": 3, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_9": {"2026-01-26": {"price_paise": 2900, "created": 187, "trial_paid": 26, "activated": 26, "cancel_before": 5, "attempted": 21, "success": 19, "total_failed": 2, "insuf_funds": 1, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 3, "cancel_after_success": 16, "cancel_after_failure": 1, "halted": 1, "completed": 0}}, "exp_3": {"2026-02-25": {"price_paise": 99900, "created": 2052, "trial_paid": 2052, "activated": 2052, "cancel_before": 1865, "attempted": 187, "success": 23, "total_failed": 164, "insuf_funds": 160, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 7, "cancel_after_success": 16, "cancel_after_failure": 62, "halted": 102, "completed": 0}, "2026-02-26": {"price_paise": 99900, "created": 3066, "trial_paid": 3066, "activated": 3066, "cancel_before": 2768, "attempted": 298, "success": 34, "total_failed": 264, "insuf_funds": 257, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 7, "still_active": 18, "cancel_after_success": 16, "cancel_after_failure": 102, "halted": 162, "completed": 0}, "2026-02-27": {"price_paise": 99900, "created": 1420, "trial_paid": 836, "activated": 836, "cancel_before": 722, "attempted": 114, "success": 14, "total_failed": 100, "insuf_funds": 99, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 8, "cancel_after_success": 6, "cancel_after_failure": 42, "halted": 58, "completed": 0}, "2026-02-28": {"price_paise": 99900, "created": 1121, "trial_paid": 428, "activated": 426, "cancel_before": 271, "attempted": 155, "success": 24, "total_failed": 131, "insuf_funds": 124, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 7, "still_active": 8, "cancel_after_success": 16, "cancel_after_failure": 58, "halted": 73, "completed": 0}, "2026-03-01": {"price_paise": 99900, "created": 309, "trial_paid": 309, "activated": 308, "cancel_before": 206, "attempted": 102, "success": 23, "total_failed": 79, "insuf_funds": 78, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 10, "cancel_after_success": 13, "cancel_after_failure": 40, "halted": 39, "completed": 0}, "2026-03-02": {"price_paise": 99900, "created": 276, "trial_paid": 276, "activated": 276, "cancel_before": 190, "attempted": 86, "success": 10, "total_failed": 76, "insuf_funds": 72, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 5, "cancel_after_success": 5, "cancel_after_failure": 36, "halted": 40, "completed": 0}, "2026-03-03": {"price_paise": 99900, "created": 241, "trial_paid": 241, "activated": 241, "cancel_before": 149, "attempted": 92, "success": 12, "total_failed": 80, "insuf_funds": 77, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 3, "still_active": 8, "cancel_after_success": 4, "cancel_after_failure": 31, "halted": 49, "completed": 0}, "2026-03-04": {"price_paise": 99900, "created": 319, "trial_paid": 319, "activated": 319, "cancel_before": 217, "attempted": 102, "success": 17, "total_failed": 85, "insuf_funds": 83, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 8, "cancel_after_success": 9, "cancel_after_failure": 30, "halted": 55, "completed": 0}, "2026-03-05": {"price_paise": 99900, "created": 720, "trial_paid": 720, "activated": 720, "cancel_before": 434, "attempted": 286, "success": 33, "total_failed": 253, "insuf_funds": 245, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 8, "still_active": 18, "cancel_after_success": 15, "cancel_after_failure": 81, "halted": 172, "completed": 0}, "2026-03-06": {"price_paise": 99900, "created": 582, "trial_paid": 582, "activated": 582, "cancel_before": 324, "attempted": 258, "success": 32, "total_failed": 226, "insuf_funds": 222, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 15, "cancel_after_success": 17, "cancel_after_failure": 69, "halted": 157, "completed": 0}, "2026-03-07": {"price_paise": 99900, "created": 917, "trial_paid": 917, "activated": 917, "cancel_before": 522, "attempted": 395, "success": 54, "total_failed": 341, "insuf_funds": 336, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 29, "cancel_after_success": 25, "cancel_after_failure": 94, "halted": 247, "completed": 0}, "2026-03-08": {"price_paise": 99900, "created": 1297, "trial_paid": 1297, "activated": 1297, "cancel_before": 776, "attempted": 521, "success": 64, "total_failed": 457, "insuf_funds": 449, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 8, "still_active": 35, "cancel_after_success": 29, "cancel_after_failure": 133, "halted": 324, "completed": 0}, "2026-03-09": {"price_paise": 99900, "created": 1086, "trial_paid": 1086, "activated": 1084, "cancel_before": 696, "attempted": 388, "success": 52, "total_failed": 336, "insuf_funds": 327, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 9, "still_active": 27, "cancel_after_success": 25, "cancel_after_failure": 91, "halted": 245, "completed": 0}, "2026-03-10": {"price_paise": 99900, "created": 887, "trial_paid": 887, "activated": 887, "cancel_before": 538, "attempted": 349, "success": 40, "total_failed": 309, "insuf_funds": 301, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 8, "still_active": 25, "cancel_after_success": 15, "cancel_after_failure": 77, "halted": 232, "completed": 0}, "2026-03-11": {"price_paise": 99900, "created": 1064, "trial_paid": 1064, "activated": 1064, "cancel_before": 633, "attempted": 431, "success": 31, "total_failed": 400, "insuf_funds": 392, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 8, "still_active": 19, "cancel_after_success": 12, "cancel_after_failure": 87, "halted": 313, "completed": 0}, "2026-03-12": {"price_paise": 99900, "created": 883, "trial_paid": 883, "activated": 882, "cancel_before": 538, "attempted": 344, "success": 29, "total_failed": 315, "insuf_funds": 306, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 9, "still_active": 15, "cancel_after_success": 14, "cancel_after_failure": 56, "halted": 259, "completed": 0}, "2026-03-13": {"price_paise": 99900, "created": 808, "trial_paid": 808, "activated": 808, "cancel_before": 650, "attempted": 158, "success": 9, "total_failed": 149, "insuf_funds": 143, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 6, "still_active": 8, "cancel_after_success": 1, "cancel_after_failure": 14, "halted": 135, "completed": 0}, "2026-03-14": {"price_paise": 99900, "created": 535, "trial_paid": 535, "activated": 533, "cancel_before": 533, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_4": {"2026-02-25": {"price_paise": 49900, "created": 1985, "trial_paid": 1985, "activated": 1985, "cancel_before": 1797, "attempted": 188, "success": 28, "total_failed": 160, "insuf_funds": 155, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 5, "still_active": 18, "cancel_after_success": 10, "cancel_after_failure": 51, "halted": 109, "completed": 0}, "2026-02-26": {"price_paise": 49900, "created": 2824, "trial_paid": 2824, "activated": 2824, "cancel_before": 2543, "attempted": 281, "success": 51, "total_failed": 230, "insuf_funds": 225, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 22, "cancel_after_success": 29, "cancel_after_failure": 83, "halted": 147, "completed": 0}, "2026-02-27": {"price_paise": 49900, "created": 1357, "trial_paid": 791, "activated": 791, "cancel_before": 681, "attempted": 110, "success": 18, "total_failed": 92, "insuf_funds": 90, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 7, "cancel_after_success": 11, "cancel_after_failure": 40, "halted": 52, "completed": 0}, "2026-02-28": {"price_paise": 49900, "created": 1116, "trial_paid": 437, "activated": 436, "cancel_before": 307, "attempted": 129, "success": 26, "total_failed": 103, "insuf_funds": 102, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 14, "cancel_after_success": 12, "cancel_after_failure": 38, "halted": 65, "completed": 0}, "2026-03-01": {"price_paise": 49900, "created": 331, "trial_paid": 331, "activated": 331, "cancel_before": 235, "attempted": 96, "success": 24, "total_failed": 72, "insuf_funds": 69, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 3, "still_active": 13, "cancel_after_success": 11, "cancel_after_failure": 25, "halted": 47, "completed": 0}, "2026-03-02": {"price_paise": 49900, "created": 295, "trial_paid": 295, "activated": 295, "cancel_before": 202, "attempted": 93, "success": 17, "total_failed": 76, "insuf_funds": 72, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 12, "cancel_after_success": 5, "cancel_after_failure": 31, "halted": 45, "completed": 0}, "2026-03-03": {"price_paise": 49900, "created": 206, "trial_paid": 206, "activated": 206, "cancel_before": 137, "attempted": 69, "success": 19, "total_failed": 50, "insuf_funds": 49, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 1, "still_active": 10, "cancel_after_success": 9, "cancel_after_failure": 21, "halted": 29, "completed": 0}, "2026-03-04": {"price_paise": 49900, "created": 356, "trial_paid": 356, "activated": 355, "cancel_before": 250, "attempted": 105, "success": 26, "total_failed": 79, "insuf_funds": 79, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 12, "cancel_after_success": 14, "cancel_after_failure": 26, "halted": 53, "completed": 0}, "2026-03-05": {"price_paise": 49900, "created": 719, "trial_paid": 719, "activated": 719, "cancel_before": 447, "attempted": 272, "success": 60, "total_failed": 212, "insuf_funds": 208, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 40, "cancel_after_success": 20, "cancel_after_failure": 66, "halted": 146, "completed": 0}, "2026-03-06": {"price_paise": 49900, "created": 535, "trial_paid": 535, "activated": 535, "cancel_before": 318, "attempted": 217, "success": 40, "total_failed": 177, "insuf_funds": 173, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 19, "cancel_after_success": 21, "cancel_after_failure": 57, "halted": 120, "completed": 0}, "2026-03-07": {"price_paise": 49900, "created": 904, "trial_paid": 904, "activated": 904, "cancel_before": 510, "attempted": 394, "success": 79, "total_failed": 315, "insuf_funds": 309, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 6, "still_active": 53, "cancel_after_success": 26, "cancel_after_failure": 86, "halted": 229, "completed": 0}, "2026-03-08": {"price_paise": 49900, "created": 1327, "trial_paid": 1327, "activated": 1326, "cancel_before": 832, "attempted": 494, "success": 86, "total_failed": 408, "insuf_funds": 403, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 52, "cancel_after_success": 34, "cancel_after_failure": 124, "halted": 284, "completed": 0}, "2026-03-09": {"price_paise": 49900, "created": 1055, "trial_paid": 1055, "activated": 1054, "cancel_before": 678, "attempted": 376, "success": 56, "total_failed": 320, "insuf_funds": 309, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 11, "still_active": 34, "cancel_after_success": 22, "cancel_after_failure": 87, "halted": 233, "completed": 0}, "2026-03-10": {"price_paise": 49900, "created": 995, "trial_paid": 995, "activated": 995, "cancel_before": 596, "attempted": 399, "success": 63, "total_failed": 336, "insuf_funds": 327, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 9, "still_active": 42, "cancel_after_success": 21, "cancel_after_failure": 75, "halted": 261, "completed": 0}, "2026-03-11": {"price_paise": 49900, "created": 1114, "trial_paid": 1114, "activated": 1114, "cancel_before": 650, "attempted": 464, "success": 78, "total_failed": 386, "insuf_funds": 377, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 1, "upi_not_init": 0, "tech_error": 0, "other_fail": 8, "still_active": 51, "cancel_after_success": 27, "cancel_after_failure": 78, "halted": 308, "completed": 0}, "2026-03-12": {"price_paise": 49900, "created": 897, "trial_paid": 897, "activated": 897, "cancel_before": 558, "attempted": 339, "success": 43, "total_failed": 296, "insuf_funds": 278, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 18, "still_active": 34, "cancel_after_success": 9, "cancel_after_failure": 38, "halted": 258, "completed": 0}, "2026-03-13": {"price_paise": 49900, "created": 796, "trial_paid": 796, "activated": 796, "cancel_before": 608, "attempted": 188, "success": 21, "total_failed": 167, "insuf_funds": 163, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 4, "still_active": 15, "cancel_after_success": 6, "cancel_after_failure": 17, "halted": 150, "completed": 0}, "2026-03-14": {"price_paise": 49900, "created": 500, "trial_paid": 500, "activated": 500, "cancel_before": 500, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_10": {"2026-02-25": {"price_paise": 49900, "created": 4, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-26": {"price_paise": 49900, "created": 8, "trial_paid": 1, "activated": 1, "cancel_before": 0, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-27": {"price_paise": 49900, "created": 18, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-28": {"price_paise": 49900, "created": 5, "trial_paid": 3, "activated": 3, "cancel_before": 0, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-01": {"price_paise": 49900, "created": 2, "trial_paid": 2, "activated": 2, "cancel_before": 0, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-02": {"price_paise": 49900, "created": 2, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-03": {"price_paise": 49900, "created": 9, "trial_paid": 9, "activated": 9, "cancel_before": 8, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-04": {"price_paise": 49900, "created": 2, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-05": {"price_paise": 49900, "created": 1, "trial_paid": 1, "activated": 1, "cancel_before": 1, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-06": {"price_paise": 49900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 3, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 3, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-07": {"price_paise": 49900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 4, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 2, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-08": {"price_paise": 49900, "created": 5, "trial_paid": 5, "activated": 5, "cancel_before": 2, "attempted": 3, "success": 3, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 2, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-09": {"price_paise": 49900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 1, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-10": {"price_paise": 49900, "created": 4, "trial_paid": 4, "activated": 4, "cancel_before": 0, "attempted": 4, "success": 4, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-11": {"price_paise": 49900, "created": 11, "trial_paid": 11, "activated": 11, "cancel_before": 3, "attempted": 8, "success": 8, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 5, "cancel_after_success": 3, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-12": {"price_paise": 49900, "created": 4, "trial_paid": 4, "activated": 4, "cancel_before": 3, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-13": {"price_paise": 49900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 2, "attempted": 4, "success": 4, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 3, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-14": {"price_paise": 49900, "created": 2, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}}, "exp_11": {"2026-02-25": {"price_paise": 99900, "created": 1, "trial_paid": 0, "activated": 0, "cancel_before": 0, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-26": {"price_paise": 99900, "created": 14, "trial_paid": 4, "activated": 4, "cancel_before": 4, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-27": {"price_paise": 99900, "created": 20, "trial_paid": 1, "activated": 1, "cancel_before": 1, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-02-28": {"price_paise": 99900, "created": 15, "trial_paid": 2, "activated": 2, "cancel_before": 1, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-02": {"price_paise": 99900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 2, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-04": {"price_paise": 99900, "created": 1, "trial_paid": 1, "activated": 1, "cancel_before": 1, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-05": {"price_paise": 99900, "created": 1, "trial_paid": 1, "activated": 1, "cancel_before": 1, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-06": {"price_paise": 99900, "created": 4, "trial_paid": 4, "activated": 4, "cancel_before": 3, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-07": {"price_paise": 99900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 6, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-08": {"price_paise": 99900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 2, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-09": {"price_paise": 99900, "created": 6, "trial_paid": 6, "activated": 6, "cancel_before": 4, "attempted": 2, "success": 2, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 1, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-10": {"price_paise": 99900, "created": 2, "trial_paid": 2, "activated": 2, "cancel_before": 2, "attempted": 0, "success": 0, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 0, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-11": {"price_paise": 99900, "created": 7, "trial_paid": 7, "activated": 7, "cancel_before": 6, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-12": {"price_paise": 99900, "created": 3, "trial_paid": 3, "activated": 3, "cancel_before": 2, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}, "2026-03-13": {"price_paise": 99900, "created": 4, "trial_paid": 4, "activated": 4, "cancel_before": 3, "attempted": 1, "success": 1, "total_failed": 0, "insuf_funds": 0, "user_cancelled": 0, "timed_out": 0, "mandate_issue": 0, "upi_not_init": 0, "tech_error": 0, "other_fail": 0, "still_active": 1, "cancel_after_success": 0, "cancel_after_failure": 0, "halted": 0, "completed": 0}}};
+const allDates = ["2025-12-27", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-10", "2026-01-11", "2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16", "2026-01-17", "2026-01-18", "2026-01-19", "2026-01-20", "2026-01-21", "2026-01-22", "2026-01-23", "2026-01-24", "2026-01-25", "2026-01-26", "2026-01-27", "2026-01-28", "2026-01-29", "2026-01-30", "2026-01-31", "2026-02-01", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05", "2026-02-06", "2026-02-07", "2026-02-08", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-14", "2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23", "2026-02-24", "2026-02-25", "2026-02-26", "2026-02-27", "2026-02-28", "2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14"];
+const expPrices = {"exp_2": 8900, "exp_1": 8900, "exp_5": 0, "exp_6": 8900, "exp_8": 3000, "exp_12": 0, "exp_7": 22900, "exp_9": 2900, "exp_3": 99900, "exp_4": 49900, "exp_10": 49900, "exp_11": 99900};
+
+const EXP_COLORS = {
+    _ALL: '#555',
+    exp_1: '#a43df5', exp_2: '#119f97', exp_3: '#ff5d39',
+    exp_4: '#2372e9', exp_5: '#fd2b68', exp_6: '#e08a00',
+    exp_7: '#6366f1', exp_8: '#16a34a', exp_9: '#ea580c',
+    exp_10: '#0891b2', exp_11: '#9333ea', exp_12: '#dc2626',
+    exp_13: '#ca8a04',
+};
+function expColor(k) { return EXP_COLORS[k] || '#888'; }
+
+let currentTrendMetric = 'revenue';
+let tableSortCol = 'revenue';
+let tableSortAsc = false;
+
+const baseLayout = {
+    font: { size: 13, color: '#555', family: 'Inter, -apple-system, sans-serif' },
+    paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+    margin: { l: 30, r: 30, t: 20, b: 20 }, height: 680,
+};
+const plotConfig = {
+    responsive: true, displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'], displaylogo: false,
+};
+
+// ========== HELPERS ==========
+function fmtRupee(paise) {
+    const r = Math.round(paise / 100);
+    if (r >= 100000) return '\u20b9' + (r / 100000).toFixed(2) + 'L';
+    if (r >= 1000) return '\u20b9' + (r / 1000).toFixed(1) + 'K';
+    return '\u20b9' + r.toLocaleString();
+}
+function fmtRupeeExact(paise) {
+    return '\u20b9' + Math.round(paise / 100).toLocaleString();
+}
+function getRevenue(d, expKey) {
+    const price = d.price_paise || expPrices[expKey] || 0;
+    return d.success * price;
+}
+
+// ========== DATE FILTERING ==========
+function getDateRange() {
+    return { start: document.getElementById('date-start').value,
+             end: document.getElementById('date-end').value };
+}
+
+function aggregateDateRange(start, end) {
+    const result = {};
+    for (const [expKey, dailyData] of Object.entries(timeSeriesData)) {
+        const agg = { price_paise:0, created:0, trial_paid:0, activated:0, cancel_before:0,
+            attempted:0, success:0, total_failed:0, insuf_funds:0,
+            user_cancelled:0, timed_out:0, mandate_issue:0, upi_not_init:0,
+            tech_error:0, other_fail:0, still_active:0, cancel_after_success:0,
+            cancel_after_failure:0, halted:0, completed:0 };
+        let gotPrice = false;
+        for (const [dateStr, dayData] of Object.entries(dailyData)) {
+            if (dateStr >= start && dateStr <= end) {
+                for (const k of Object.keys(agg)) {
+                    if (k === 'price_paise') { if (!gotPrice && dayData.price_paise) { agg.price_paise = dayData.price_paise; gotPrice = true; } }
+                    else agg[k] += (dayData[k] || 0);
+                }
+            }
+        }
+        if (!agg.price_paise) agg.price_paise = expPrices[expKey] || 0;
+        if (agg.created > 0) result[expKey] = agg;
+    }
+    const all = { price_paise:0, created:0, trial_paid:0, activated:0, cancel_before:0,
+        attempted:0, success:0, total_failed:0, insuf_funds:0,
+        user_cancelled:0, timed_out:0, mandate_issue:0, upi_not_init:0,
+        tech_error:0, other_fail:0, still_active:0, cancel_after_success:0,
+        cancel_after_failure:0, halted:0, completed:0 };
+    for (const [k, d] of Object.entries(result)) {
+        if (k === '_ALL') continue;
+        for (const f of Object.keys(all)) { if (f !== 'price_paise') all[f] += d[f]; }
+    }
+    if (all.created > 0) result['_ALL'] = all;
+    return result;
+}
+
+function applyDateFilter() {
+    const {start, end} = getDateRange();
+    funnelData = aggregateDateRange(start, end);
+    const totalCreated = funnelData['_ALL'] ? funnelData['_ALL'].created : 0;
+    document.getElementById('filter-info').textContent = start + ' to ' + end + ' (' + totalCreated.toLocaleString() + ' subs)';
+    document.getElementById('sub-count-filtered').textContent = totalCreated.toLocaleString() + ' in range';
+    renderKPIs();
+    renderRevenueBar();
+    renderRevenueTable();
+    renderTrends();
+    renderLeakage();
+    renderInsights();
+    buildAccordion();
+}
+
+function setPreset(days) {
+    if (days === 0 || allDates.length === 0) {
+        document.getElementById('date-start').value = allDates[0] || '';
+        document.getElementById('date-end').value = allDates[allDates.length-1] || '';
+    } else {
+        const end = new Date();
+        const start = new Date(end); start.setDate(start.getDate() - days);
+        document.getElementById('date-start').value = start.toISOString().slice(0,10);
+        document.getElementById('date-end').value = end.toISOString().slice(0,10);
+    }
+    document.querySelectorAll('.filter-btn:not(.filter-btn-apply)').forEach(b => b.classList.remove('active'));
+    applyDateFilter();
+}
+
+// ========== KPI CARDS ==========
+function renderKPIs() {
+    const {start, end} = getDateRange();
+    const current = funnelData;
+    const days = Math.round((new Date(end) - new Date(start)) / 86400000);
+    const prevEnd = new Date(new Date(start).getTime() - 86400000);
+    const prevStart = new Date(prevEnd.getTime() - days * 86400000);
+    const prev = aggregateDateRange(prevStart.toISOString().slice(0,10), prevEnd.toISOString().slice(0,10));
+    
+    // Compute totals
+    let totalRev = 0, prevTotalRev = 0;
+    for (const [k, d] of Object.entries(current)) {
+        if (k === '_ALL') continue;
+        totalRev += getRevenue(d, k);
+    }
+    for (const [k, d] of Object.entries(prev)) {
+        if (k === '_ALL') continue;
+        prevTotalRev += getRevenue(d, k);
+    }
+    const allC = current['_ALL'] || {created:0,attempted:0,success:0,still_active:0};
+    const allP = prev['_ALL'] || {created:0,attempted:0,success:0,still_active:0};
+    const debitRate = allC.attempted > 0 ? (allC.success/allC.attempted*100) : 0;
+    const prevDebitRate = allP.attempted > 0 ? (allP.success/allP.attempted*100) : 0;
+    const retRate = allC.created > 0 ? (allC.still_active/allC.created*100) : 0;
+    const prevRetRate = allP.created > 0 ? (allP.still_active/allP.created*100) : 0;
+    
+    function deltaHtml(cur, prv, isCurrency, isPct) {
+        if (!prv) return '<span class="kpi-delta neutral">No prior data</span>';
+        const diff = cur - prv;
+        const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral';
+        const arrow = diff > 0 ? '\u2191' : diff < 0 ? '\u2193' : '\u2194';
+        let txt;
+        if (isCurrency) txt = fmtRupee(Math.abs(diff * 100));
+        else if (isPct) txt = Math.abs(diff).toFixed(1) + 'pp';
+        else txt = Math.abs(diff).toLocaleString();
+        const pctChg = prv !== 0 ? ' (' + (diff/prv*100).toFixed(1) + '%)' : '';
+        return '<span class="kpi-delta ' + cls + '">' + arrow + ' ' + txt + (isCurrency || isPct ? '' : pctChg) + ' vs prev</span>';
+    }
+    
+    document.getElementById('kpi-grid').innerHTML = 
+        '<div class="kpi-card"><div class="kpi-label">Total Revenue</div>' +
+        '<div class="kpi-value">' + fmtRupee(totalRev) + '</div>' +
+        deltaHtml(totalRev/100, prevTotalRev/100, true, false) + '</div>' +
+        '<div class="kpi-card"><div class="kpi-label">Subscribers</div>' +
+        '<div class="kpi-value">' + allC.created.toLocaleString() + '</div>' +
+        deltaHtml(allC.created, allP.created, false, false) + '</div>' +
+        '<div class="kpi-card"><div class="kpi-label">Debit Success Rate</div>' +
+        '<div class="kpi-value">' + debitRate.toFixed(1) + '%</div>' +
+        deltaHtml(debitRate, prevDebitRate, false, true) + '</div>' +
+        '<div class="kpi-card"><div class="kpi-label">Retention</div>' +
+        '<div class="kpi-value">' + retRate.toFixed(1) + '%</div>' +
+        deltaHtml(retRate, prevRetRate, false, true) + '</div>';
+}
+
+// ========== REVENUE BAR CHART ==========
+function renderRevenueBar() {
+    const {start, end} = getDateRange();
+    document.getElementById('rev-date-range').textContent = start + ' to ' + end;
+    const exps = [], revs = [], colors = [];
+    const rows = [];
+    for (const [k, d] of Object.entries(funnelData)) {
+        if (k === '_ALL') continue;
+        rows.push({ key: k, rev: getRevenue(d, k), name: titleMap[k] || k });
+    }
+    rows.sort((a, b) => b.rev - a.rev);
+    for (const r of rows) {
+        exps.push(r.name); revs.push(Math.round(r.rev / 100)); colors.push(expColor(r.key));
+    }
+    const trace = {
+        type: 'bar', y: exps, x: revs, orientation: 'h',
+        marker: { color: colors, line: { color: 'rgba(0,0,0,0.06)', width: 0.5 } },
+        text: revs.map(v => '\u20b9' + v.toLocaleString()),
+        textposition: 'auto', textfont: { size: 12, color: '#fff', family: 'Fira Mono' },
+        hovertemplate: '<b>%{y}</b><br>Revenue: \u20b9%{x:,}<extra></extra>',
+    };
+    const layout = {
+        ...baseLayout, height: Math.max(200, rows.length * 48 + 60),
+        margin: { l: 160, r: 40, t: 10, b: 40 },
+        xaxis: { title: { text: 'Revenue (\u20b9)', font: { size: 12, color: '#999' } },
+            gridcolor: 'rgba(0,0,0,0.04)', tickfont: { color: '#999' }, tickprefix: '\u20b9', tickformat: ',' },
+        yaxis: { autorange: 'reversed', tickfont: { size: 12, color: '#333' } },
+        showlegend: false,
+    };
+    Plotly.react('rev-bar-container', [trace], layout, plotConfig);
+}
+
+// ========== REVENUE TABLE ==========
+function renderRevenueTable() {
+    const rows = [];
+    for (const [k, d] of Object.entries(funnelData)) {
+        if (k === '_ALL') continue;
+        const rev = getRevenue(d, k);
+        const revPerSub = d.created > 0 ? rev / d.created : 0;
+        const rate = d.attempted > 0 ? (d.success / d.attempted * 100) : 0;
+        const retRate = d.created > 0 ? (d.still_active / d.created * 100) : 0;
+        rows.push({ key: k, name: titleMap[k]||k, revenue: rev, revPerSub: revPerSub,
+            volume: d.created, rate: rate, retention: retRate });
+    }
+    // Sort
+    rows.sort((a,b) => tableSortAsc ? a[tableSortCol]-b[tableSortCol] : b[tableSortCol]-a[tableSortCol]);
+    const maxRev = Math.max(...rows.map(r => r.revenue), 1);
+    
+    const cols = ['revenue','revPerSub','volume','rate','retention'];
+    const colLabels = {revenue:'Revenue',revPerSub:'Rev/Sub',volume:'Volume',rate:'Debit Success',retention:'Retention'};
+    let html = '<table class="rev-table"><thead><tr><th>Experiment</th>';
+    for (const c of cols) {
+        const sorted = tableSortCol === c ? ' sorted' : '';
+        const arrow = tableSortCol === c ? (tableSortAsc ? ' \u2191' : ' \u2193') : '';
+        html += '<th class="' + sorted + '" onclick="sortTable(\'' + c + '\')">' + colLabels[c] + arrow + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (const r of rows) {
+        const rc = r.rate >= 80 ? 'rate-good' : r.rate >= 50 ? 'rate-ok' : 'rate-bad';
+        const barW = Math.round(r.revenue / maxRev * 80);
+        html += '<tr onclick="toggleAccordion(\'' + r.key + '\')">';
+        html += '<td>' + r.name + '</td>';
+        html += '<td>' + fmtRupee(r.revenue) + '<span class="rev-bar" style="width:' + barW + 'px"></span></td>';
+        html += '<td>' + fmtRupee(r.revPerSub) + '</td>';
+        html += '<td>' + r.volume.toLocaleString() + '</td>';
+        html += '<td><span class="' + rc + '">' + r.rate.toFixed(1) + '%</span></td>';
+        html += '<td>' + r.retention.toFixed(1) + '%</td>';
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    document.getElementById('rev-table-container').innerHTML = html;
+}
+
+function sortTable(col) {
+    if (tableSortCol === col) tableSortAsc = !tableSortAsc;
+    else { tableSortCol = col; tableSortAsc = false; }
+    renderRevenueTable();
+}
+
+// ========== TRENDS ==========
+function setTrendMetric(metric) {
+    currentTrendMetric = metric;
+    document.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mbtn_' + metric).classList.add('active');
+    renderTrends();
+}
+
+function movingAvg(arr, w) {
+    return arr.map((v, i) => {
+        const s = Math.max(0, i - w + 1);
+        const sl = arr.slice(s, i + 1).filter(x => x !== null);
+        return sl.length > 0 ? sl.reduce((a,b) => a+b, 0) / sl.length : null;
+    });
+}
+
+function renderTrends() {
+    const {start, end} = getDateRange();
+    const useMA = document.getElementById('ma-toggle').checked;
+    const metricLabels = {
+        revenue: 'Daily Revenue (\u20b9)',
+        rev_per_sub: 'Revenue per Subscriber (\u20b9)',
+        debit_success_rate: '1st Debit Success %',
+        active_rate: 'Retention %',
+        trial_paid_rate: 'Trial Paid %'
+    };
+    const isRupee = currentTrendMetric === 'revenue' || currentTrendMetric === 'rev_per_sub';
+    const traces = [];
+    for (const [expKey, dailyData] of Object.entries(timeSeriesData)) {
+        if (expKey === '_ALL') continue;
+        const dates = [], values = [];
+        const price = expPrices[expKey] || 0;
+        for (const dateStr of allDates) {
+            if (dateStr < start || dateStr > end) continue;
+            const d = dailyData[dateStr];
+            if (!d || d.created === 0) { dates.push(dateStr); values.push(null); continue; }
+            dates.push(dateStr);
+            let val = null;
+            if (currentTrendMetric === 'revenue') val = d.success * price / 100;
+            else if (currentTrendMetric === 'rev_per_sub') val = d.created > 0 ? d.success * price / 100 / d.created : null;
+            else if (currentTrendMetric === 'debit_success_rate') val = d.attempted > 0 ? d.success / d.attempted * 100 : null;
+            else if (currentTrendMetric === 'active_rate') val = d.still_active / d.created * 100;
+            else if (currentTrendMetric === 'trial_paid_rate') val = d.trial_paid / d.created * 100;
+            values.push(val);
+        }
+        const yVals = useMA ? movingAvg(values, 7) : values;
+        if (yVals.filter(v => v !== null).length < 3) continue;
+        const fmt = isRupee ? '\u20b9%{y:,.0f}' : '%{y:.1f}%';
+        traces.push({
+            type: 'scatter', mode: 'lines',
+            name: titleMap[expKey] || expKey,
+            x: dates, y: yVals,
+            line: { color: expColor(expKey), width: 2 },
+            connectgaps: false,
+            hovertemplate: '<b>' + (titleMap[expKey] || expKey) + '</b><br>%{x}<br>' + fmt + '<extra></extra>',
+        });
+    }
+    const layout = {
+        ...baseLayout, height: 460, margin: { l: 70, r: 30, t: 20, b: 60 },
+        xaxis: { tickfont: { size: 11, color: '#999' }, gridcolor: 'rgba(0,0,0,0.04)', type: 'date' },
+        yaxis: { title: { text: metricLabels[currentTrendMetric], font: { size: 12, color: '#999' } },
+            gridcolor: 'rgba(0,0,0,0.04)', tickfont: { color: '#999' },
+            tickprefix: isRupee ? '\u20b9' : '', ticksuffix: isRupee ? '' : '%',
+            tickformat: isRupee ? ',' : '', rangemode: 'tozero' },
+        legend: { orientation: 'h', y: -0.15, x: 0.5, xanchor: 'center', font: { size: 11, color: '#666' } },
+        hovermode: 'x unified',
+    };
+    Plotly.react('trends-container', traces, layout, plotConfig);
+}
+
+// ========== REVENUE LEAKAGE ==========
+function renderLeakage() {
+    // Compute weighted-average price across experiments
+    let totalCreatedWeighted = 0, totalCreated = 0;
+    for (const [k, d] of Object.entries(funnelData)) {
+        if (k === '_ALL') continue;
+        const price = d.price_paise || expPrices[k] || 0;
+        totalCreatedWeighted += d.created * price;
+        totalCreated += d.created;
+    }
+    // Per-experiment leakage
+    let potentialRev = 0, preDebitLoss = 0, debitFailLoss = 0, postSuccessLoss = 0, retainedRev = 0;
+    let failBreakdown = { insuf_funds:0, user_cancelled:0, timed_out:0, mandate_issue:0, upi_not_init:0, tech_error:0, other_fail:0 };
+    for (const [k, d] of Object.entries(funnelData)) {
+        if (k === '_ALL') continue;
+        const price = d.price_paise || expPrices[k] || 0;
+        potentialRev += d.created * price;
+        const didNotPay = d.created - d.trial_paid;
+        preDebitLoss += (didNotPay + d.cancel_before) * price;
+        debitFailLoss += d.total_failed * price;
+        postSuccessLoss += (d.cancel_after_success + d.cancel_after_failure + d.halted + d.completed) * price;
+        retainedRev += d.still_active * price;
+        for (const fk of Object.keys(failBreakdown)) failBreakdown[fk] += (d[fk] || 0) * price;
+    }
+    
+    // Insight cards for leakage
+    const leakInsights = document.getElementById('leakage-insights');
+    leakInsights.innerHTML = 
+        '<div class="insight-card insight-info"><div class="insight-metric">' + fmtRupee(potentialRev) + '</div>' +
+        '<div class="insight-title">Potential Revenue</div><div class="insight-body">If every subscriber paid</div></div>' +
+        '<div class="insight-card insight-danger"><div class="insight-metric">' + fmtRupee(preDebitLoss + debitFailLoss) + '</div>' +
+        '<div class="insight-title">Total Leakage</div><div class="insight-body">Lost before and during debit</div></div>' +
+        '<div class="insight-card insight-success"><div class="insight-metric">' + fmtRupee(retainedRev) + '</div>' +
+        '<div class="insight-title">Retained Revenue</div><div class="insight-body">From currently active subscribers</div></div>';
+    
+    // Waterfall chart in rupees
+    const labels = ['Potential Revenue', 'Did Not Pay / Cancel Before', 'Insufficient Funds',
+        'User Cancelled', 'Timed Out', 'Mandate Issue', 'Tech Error', 'Other Failures',
+        'Post-Success Churn', 'Retained Revenue'];
+    const measures = ['absolute','relative','relative','relative','relative','relative','relative','relative','relative','total'];
+    const vals = [
+        Math.round(potentialRev/100), -Math.round(preDebitLoss/100),
+        -Math.round(failBreakdown.insuf_funds/100), -Math.round(failBreakdown.user_cancelled/100),
+        -Math.round(failBreakdown.timed_out/100), -Math.round(failBreakdown.mandate_issue/100),
+        -Math.round(failBreakdown.tech_error/100), -Math.round((failBreakdown.upi_not_init + failBreakdown.other_fail)/100),
+        -Math.round(postSuccessLoss/100), Math.round(retainedRev/100)
+    ];
+    // Filter zero values
+    const fL = [], fM = [], fV = [];
+    for (let i = 0; i < labels.length; i++) {
+        if (vals[i] !== 0 || i === 0 || i === labels.length - 1) {
+            fL.push(labels[i]); fM.push(measures[i]); fV.push(vals[i]);
+        }
+    }
+    const trace = {
+        type: 'waterfall', x: fL, y: fV, measure: fM, textposition: 'outside',
+        text: fV.map(v => { const a = Math.abs(v); return a > 0 ? (v < 0 ? '-' : '') + '\u20b9' + a.toLocaleString() : ''; }),
+        decreasing: { marker: { color: 'rgba(253,43,104,0.55)', line: { color: '#fd2b68', width: 1 } } },
+        increasing: { marker: { color: 'rgba(17,159,151,0.55)', line: { color: '#119f97', width: 1 } } },
+        totals: { marker: { color: 'rgba(35,114,233,0.55)', line: { color: '#2372e9', width: 1 } } },
+        connector: { line: { color: 'rgba(0,0,0,0.08)', width: 1, dash: 'dot' } },
+        hovertemplate: '<b>%{x}</b><br>\u20b9%{y:,}<extra></extra>',
+    };
+    const layout = {
+        ...baseLayout, height: 420, margin: { l: 80, r: 40, t: 20, b: 140 },
+        xaxis: { tickangle: -40, tickfont: { size: 11, color: '#999' }, gridcolor: 'rgba(0,0,0,0.04)' },
+        yaxis: { title: { text: 'Revenue (\u20b9)', font: { size: 12, color: '#999' } },
+            gridcolor: 'rgba(0,0,0,0.04)', tickfont: { color: '#999' }, tickprefix: '\u20b9', tickformat: ',' },
+        showlegend: false,
+    };
+    Plotly.react('leakage-container', [trace], layout, plotConfig);
+}
+
+// ========== INSIGHTS ==========
+function renderInsights() {
+    const {start, end} = getDateRange();
+    document.getElementById('insights-date-range').textContent = start + ' to ' + end;
+    const current = funnelData;
+    const days = Math.round((new Date(end) - new Date(start)) / 86400000);
+    const prevEnd = new Date(new Date(start).getTime() - 86400000);
+    const prevStart = new Date(prevEnd.getTime() - days * 86400000);
+    const prev = aggregateDateRange(prevStart.toISOString().slice(0,10), prevEnd.toISOString().slice(0,10));
+    const insights = [];
+    
+    // Revenue winner
+    let bestRevExp = null, bestRev = -1;
+    for (const [k, d] of Object.entries(current)) {
+        if (k === '_ALL') continue;
+        const rev = getRevenue(d, k);
+        if (rev > bestRev) { bestRev = rev; bestRevExp = k; }
+    }
+    if (bestRevExp) {
+        insights.push({ type: 'success', metric: fmtRupee(bestRev),
+            title: 'Revenue Leader', body: (titleMap[bestRevExp]||bestRevExp) + ' generated the most revenue this period' });
+    }
+    
+    // Best unit economics
+    let bestUnitExp = null, bestUnit = -1;
+    for (const [k, d] of Object.entries(current)) {
+        if (k === '_ALL' || d.created < 30) continue;
+        const rps = getRevenue(d, k) / d.created;
+        if (rps > bestUnit) { bestUnit = rps; bestUnitExp = k; }
+    }
+    if (bestUnitExp) {
+        insights.push({ type: 'purple', metric: fmtRupee(bestUnit),
+            title: 'Best Unit Economics', body: (titleMap[bestUnitExp]||bestUnitExp) + ' — highest revenue per subscriber' });
+    }
+    
+    // Conversion leader (may differ from revenue leader)
+    let bestRateExp = null, bestRate = -1;
+    for (const [k, d] of Object.entries(current)) {
+        if (k === '_ALL' || d.attempted < 10) continue;
+        const rate = d.success / d.attempted * 100;
+        if (rate > bestRate) { bestRate = rate; bestRateExp = k; }
+    }
+    if (bestRateExp && bestRateExp !== bestRevExp) {
+        insights.push({ type: 'info', metric: bestRate.toFixed(1) + '%',
+            title: 'Conversion Leader (not Revenue Leader!)',
+            body: (titleMap[bestRateExp]||bestRateExp) + ' has highest debit success but not most revenue' });
+    } else if (bestRateExp) {
+        insights.push({ type: 'info', metric: bestRate.toFixed(1) + '%',
+            title: 'Conversion Leader', body: (titleMap[bestRateExp]||bestRateExp) + ' — highest debit success rate' });
+    }
+    
+    // Biggest revenue mover
+    let bigMover = null, bigDelta = 0;
+    for (const [k, d] of Object.entries(current)) {
+        if (k === '_ALL') continue;
+        const curRev = getRevenue(d, k);
+        const p = prev[k]; if (!p) continue;
+        const prevRev = getRevenue(p, k);
+        const delta = curRev - prevRev;
+        if (Math.abs(delta) > Math.abs(bigDelta)) { bigDelta = delta; bigMover = k; }
+    }
+    if (bigMover && Math.abs(bigDelta) > 0) {
+        const t = bigDelta > 0 ? 'success' : 'danger';
+        const arrow = bigDelta > 0 ? '\u2191' : '\u2193';
+        insights.push({ type: t, metric: arrow + ' ' + fmtRupee(Math.abs(bigDelta)),
+            title: 'Biggest Revenue Change', body: (titleMap[bigMover]||bigMover) + ' vs previous period' });
+    }
+    
+    // Top failure reason as revenue cost
+    const allD = current['_ALL'];
+    if (allD && allD.total_failed > 0) {
+        // weighted failure cost
+        let failCosts = {};
+        for (const [k, d] of Object.entries(current)) {
+            if (k === '_ALL') continue;
+            const price = d.price_paise || expPrices[k] || 0;
+            const fkeys = ['insuf_funds','user_cancelled','timed_out','mandate_issue','upi_not_init','tech_error'];
+            const fnames = ['Insufficient Funds','User Cancelled','Timed Out','Mandate Issue','UPI Not Initiated','Tech Error'];
+            for (let i = 0; i < fkeys.length; i++) {
+                failCosts[fnames[i]] = (failCosts[fnames[i]] || 0) + (d[fkeys[i]] || 0) * price;
+            }
+        }
+        const sorted = Object.entries(failCosts).sort((a,b) => b[1] - a[1]);
+        if (sorted[0] && sorted[0][1] > 0) {
+            insights.push({ type: 'warning', metric: fmtRupee(sorted[0][1]),
+                title: '#1 Revenue Leak: ' + sorted[0][0],
+                body: 'Revenue lost to this failure reason alone' });
+        }
+    }
+    
+    const grid = document.getElementById('insights-grid');
+    if (insights.length === 0) {
+        grid.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">Not enough data for insights.</div>';
+        return;
+    }
+    grid.innerHTML = insights.map(i => {
+        return '<div class="insight-card insight-' + i.type + '">' +
+            '<div class="insight-metric">' + i.metric + '</div>' +
+            '<div class="insight-title">' + i.title + '</div>' +
+            '<div class="insight-body">' + i.body + '</div></div>';
+    }).join('');
+}
+
+// ========== ACCORDION DEEP DIVE ==========
+function buildAccordion() {
+    let html = '';
+    for (const [k, d] of Object.entries(funnelData)) {
+        if (k === '_ALL') continue;
+        const name = titleMap[k] || k;
+        const rev = getRevenue(d, k);
+        html += '<div class="accordion-item" id="acc_' + k + '">';
+        html += '<div class="accordion-header" onclick="toggleAccordion(\'' + k + '\')"><span>' + name + ' &mdash; ' + fmtRupee(rev) + ' revenue, ' + d.created.toLocaleString() + ' subs</span><span class="arrow">\u25BC</span></div>';
+        html += '<div class="accordion-body" id="accbody_' + k + '"><div id="sankey_' + k + '" style="width:100%;height:500px;"></div></div>';
+        html += '</div>';
+    }
+    document.getElementById('accordion-container').innerHTML = html;
+}
+
+function toggleAccordion(key) {
+    const header = document.querySelector('#acc_' + key + ' .accordion-header');
+    const body = document.getElementById('accbody_' + key);
+    if (!header || !body) return;
+    const isOpen = body.classList.contains('open');
+    // Close all
+    document.querySelectorAll('.accordion-header').forEach(h => h.classList.remove('open'));
+    document.querySelectorAll('.accordion-body').forEach(b => b.classList.remove('open'));
+    if (!isOpen) {
+        header.classList.add('open');
+        body.classList.add('open');
+        // Render Sankey
+        const data = sankeyData[key];
+        if (data) {
+            const trace = {
+                type: 'sankey', arrangement: 'fixed',
+                node: { label: data.node.label, color: data.node.color,
+                    x: data.node.x, y: data.node.y,
+                    pad: data.node.pad, thickness: data.node.thickness,
+                    line: data.node.line, customdata: data.node.customdata,
+                    hovertemplate: '%{label}<br><br><i>%{customdata}</i><extra></extra>' },
+                link: { source: data.link.source, target: data.link.target,
+                    value: data.link.value, color: data.link.color,
+                    label: data.link.label, hovertemplate: '%{label}<extra></extra>' },
+            };
+            setTimeout(function() {
+                Plotly.react('sankey_' + key, [trace], {...baseLayout, height: 480, margin:{l:20,r:20,t:20,b:20}}, plotConfig);
+            }, 50);
+        }
+    }
+}
+
+// ========== INIT ==========
+window.addEventListener('load', function() {
+    applyDateFilter();
+});
+window.addEventListener('resize', function() {
+    Plotly.Plots.resize('rev-bar-container');
+    Plotly.Plots.resize('trends-container');
+    Plotly.Plots.resize('leakage-container');
+});
+</script>
+</body>
+</html>
