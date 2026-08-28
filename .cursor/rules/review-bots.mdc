@@ -1,0 +1,21 @@
+<!-- cursor-review-bots:managed -->
+
+---
+description: Run Cursor review bots on the whole repository
+alwaysApply: true
+---
+
+This repository uses Cursor's review bots on the **entire tree**, not a subdirectory.
+
+When the user asks to review, or before opening a pull request:
+
+1. Run `/review-bugbot` (Bugbot) against branch changes vs the default base branch.
+2. Run `/review-security` (Security Review) against the same diff.
+3. Use `/review` only when you need the appropriate reviewer chosen automatically.
+
+Project files those bots read:
+
+- `.cursor/BUGBOT.md` — Bugbot rules for every path
+- `APPROVAL_POLICY.md` and `.cursor/approval-policies/ROUTING.md` — PR Routing & Approval
+
+Do not treat a local `/review-*` run as enabling the GitHub bots. Enable Bugbot, Security Agents, and PR Routing for this repository in Cursor, and turn on auto-enable for new repositories.
